@@ -12,11 +12,11 @@ use limine::framebuffer::Framebuffer;
 
 static PANIC_FRAMEBUFFER: Once<PanicFramebufferData> = Once::new();
 
-struct PanicFramebufferData {
-    fb_pointer: *mut u32,
-    pixel_stride: u32,
-    width: u64,
-    height: u64,
+pub struct PanicFramebufferData {
+    pub fb_pointer: *mut u32,
+    pub pixel_stride: u32,
+    pub width: u64,
+    pub height: u64,
 }
 
 // This is safe because PanicFramebufferData is wrapped in a Once().

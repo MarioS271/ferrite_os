@@ -9,13 +9,13 @@ use limine::framebuffer::Framebuffer;
 
 static BASIC_FRAMEBUFFER: Mutex<Option<BasicFramebufferData>> = Mutex::new(None);
 
-struct BasicFramebufferData {
-    fb_pointer: *mut u32,
-    pixel_stride: u32,
-    width: u64,
-    height: u64,
-    x: usize,
-    y: usize,
+pub struct BasicFramebufferData {
+    pub fb_pointer: *mut u32,
+    pub pixel_stride: u32,
+    pub width: u64,
+    pub height: u64,
+    pub x: usize,
+    pub y: usize,
 }
 
 // This is safe because BasicFramebufferData is wrapped in a Mutex().
