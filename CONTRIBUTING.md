@@ -21,6 +21,8 @@ Thank you for your interest in contributing! To keep the project safe and mainta
 
 - All kernel code is written in Rust; follow standard Rust naming conventions (`snake_case` for variables, functions, modules, and files).
 - Keep `unsafe` blocks minimal and always document why they are necessary.
+- For `unsafe` blocks with inline assembly, do not document *why* the unsafe is there, rather document why the inline asm is needed.
+- For documenting `unsafe` and `asm!` blocks, use `//` as comment prefix (do not use `///` or `//!`)
 - Use comments only where the *why?* is non-obvious (a hidden constraint, a hardware quirk, a workaround for a specific bug). Do not describe what the code does.
 - Maintain the existing module and namespace structure (code goes under `src`, kernel stuff under `kernel`, …).
 
