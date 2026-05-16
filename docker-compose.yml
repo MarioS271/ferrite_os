@@ -1,0 +1,22 @@
+services:
+  ferrite_os:
+    build: .
+    image: ferrite_os:latest
+    container_name: ferrite_os
+
+    volumes:
+      # Live source mount — edits reflect instantly
+      - .:/ferrite_os
+      # Persist cargo registry cache between runs
+      - cargo_registry:/usr/local/cargo/registry
+      - cargo_git:/usr/local/cargo/git
+      # Persist build artifacts
+      - target_cache:/ferrite_os/target
+
+    stdin_open: true
+    tty: true
+
+volumes:
+  cargo_registry:
+  cargo_git:
+  target_cache:

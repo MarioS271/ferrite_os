@@ -1,0 +1,7 @@
+.idea
+.claude
+/target
+/build
+/run/dependencies/ovmf/*
+CLAUDE.md
+AGENTS.md
