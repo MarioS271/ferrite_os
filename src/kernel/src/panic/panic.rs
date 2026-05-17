@@ -4,9 +4,10 @@
 //! Authors: MarioS271
 //! Licensed via the AGPLv3 license
 
+use crate::panic::font;
+use crate::panic::framebuffer;
 use core::arch::asm;
 use core::panic::PanicInfo;
-use crate::init::panic_framebuffer;
 
 #[panic_handler]
 fn panic(_: &PanicInfo) -> ! {
@@ -21,12 +22,14 @@ fn panic(_: &PanicInfo) -> ! {
 
         for i in 0..pixels {
             // add() increments the target address and write_volatile() writes to that address.
-            // As long as limine gives us valid framebuffer data, this stays safe as it gets
+            // As long as limine gives us valid panic data, this stays safe as it gets
             // limited by pixels as the max iterator
             unsafe {
                 panic_fb.fb_pointer.add(i).write_volatile(0x00FF0000)
             };
         }
+
+        font::draw_char('a');
     }
 
     loop {
