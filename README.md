@@ -41,6 +41,8 @@ python run/build-*.py clean   # delete build/ and target/
 The build script compiles the kernel and assembles a bootable ISO inside docker, then launches QEMU.
 Incremental builds use MD5 hashing to skip docker when nothing has changed.
 
+To read serial outputs using an external console, use 
+
 ## Architecture
 
 | Component   | Details                 |

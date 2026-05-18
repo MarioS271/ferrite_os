@@ -7,5 +7,5 @@
 //! font rendering, ...
 
 pub mod framebuffer;
-pub(crate) mod font;
+pub mod font;
 pub mod text;

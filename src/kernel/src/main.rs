@@ -10,6 +10,7 @@
 mod panic;
 mod screen;
 mod types;
+mod logging;
 
 use limine::request::FramebufferRequest;
 
@@ -17,6 +18,9 @@ static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(
 
 #[no_mangle]
 extern "C" fn kmain() -> ! {
+    logging::serial::init_com1();
+    logging::serial::write_string_to_com1("Hello, Rusty World!");
+
     if let Some(limine_fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
         if let Some(limine_fb) = limine_fb_response.framebuffers().first() {
             screen::basic::framebuffer::init_framebuffer(limine_fb);

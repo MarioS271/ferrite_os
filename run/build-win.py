@@ -6,7 +6,7 @@ Authors:
     MarioS271
 
 Copyright:
-    GPLv3 License
+    AGPLv3 License
 
 Description:
     Build script for ferrite_os — Rust x86-64 bare metal OS.
@@ -45,7 +45,9 @@ OVMF_DIR    = ROOT / "run" / "dependencies" / "ovmf"
 OVMF_CODE   = OVMF_DIR / "code.fd"
 OVMF_VARS   = OVMF_DIR / "vars.fd"
 
+# Other global vars
 CONTAINER_NAME = "ferrite_os"
+TCP_SERIAL_PORT = 4231
 
 def load_config() -> dict:
     cfg_path = ROOT / "run" / "configs" / "build.toml"
@@ -261,17 +263,11 @@ def run_qemu():
     run([
         "qemu-system-x86_64",
         "-cdrom",     str(ISO),
-        "-m",         "256M",
+        "-m",         "1G",
         "-vga",       "std",
-        "-no-reboot",
-        "-no-shutdown",
-        # UEFI via OVMF
+        "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
         "-drive",     f"if=pflash,format=raw,readonly=on,file={OVMF_CODE}",
         "-drive",     f"if=pflash,format=raw,file={OVMF_VARS}",
-        # Uncomment for serial debug output in this terminal:
-        # "-serial",  "stdio",
-        # Uncomment for GDB stub on port 1234:
-        # "-s", "-S",
     ])
 
 def clean():
