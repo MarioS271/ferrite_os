@@ -6,4 +6,4 @@
 //! This module contains everything related to screen output, like the basic framebuffer,
 //! font rendering, ...
 
-pub mod basic;
+pub(crate) mod basic;

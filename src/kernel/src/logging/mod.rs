@@ -5,5 +5,6 @@
 
 //! This module contains code for logging, like serial logging, logging macros and more
 
-pub mod serial;
-mod macros;
+pub(crate) mod kernel_print;
+pub(crate) mod serial;
+mod vga;

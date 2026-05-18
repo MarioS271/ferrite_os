@@ -5,7 +5,6 @@
 //! Licensed via the AGPLv3 license
 
 use crate::types::panic_codes::PanicCode;
-use crate::screen::basic;
 use core::arch::asm;
 use core::panic::PanicInfo;
 
@@ -17,16 +16,25 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text
     }
 
     if print_debug_text {
-        if let Some(fb) = basic::framebuffer::get_framebuffer() {
+        if let Some(fb) = crate::screen::basic::framebuffer::get_framebuffer() {
             let mut x: usize = 0;
             let mut y: usize = 0;
 
-            basic::text::draw_string(fb, "Panic!\n", &mut x, &mut y, Some(0x00FF0000));
-            basic::text::draw_string(fb, panic_code.as_str(), &mut x, &mut y, None);
-            basic::text::draw_string(fb, "\n", &mut x, &mut y, None);
-            basic::text::draw_string(fb, panic_message, &mut x, &mut y, None);
+            use crate::screen::basic::text::draw_string;
+
+            draw_string(fb, "Panic!\n", &mut x, &mut y, Some(0x00FF0000));
+            draw_string(fb, panic_code.as_str(), &mut x, &mut y, None);
+            draw_string(fb, "\n", &mut x, &mut y, None);
+            draw_string(fb, panic_message, &mut x, &mut y, None);
         }
     }
+
+    use crate::logging::serial::write_string_to_com1;
+
+    write_string_to_com1("\nKernel Panic!\n");
+    write_string_to_com1(panic_code.as_str());
+    write_string_to_com1("\n");
+    write_string_to_com1(panic_message);
 
     loop {
         // Halt the cpu cause the system is gone
@@ -38,12 +46,23 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text
 
 /// Rust's internal panic handler, only used when rust runtime faults occur
 #[panic_handler]
-fn panic(_: &PanicInfo) -> ! {
+fn panic(panic_info: &PanicInfo) -> ! {
+    // Necessary to disable any interrupts to prevent the panic sequence from being interrupted
+    unsafe {
+        asm!("cli", options(nostack, nomem))
+    }
+
+    use crate::logging::serial::write_string_to_com1;
+
+    write_string_to_com1("\nFATAL: rustlang panic handler fired!\n");
+    write_string_to_com1(
+        panic_info.message().as_str().unwrap_or("(No panic info message given)")
+    );
+
     loop {
-        // Necessary to disable any interrupts to prevent the panic sequence from being interrupted,
-        // and halt the cpu cause the system is gone
+        // Halt the cpu cause the system is gone
         unsafe {
-            asm!("cli; hlt", options(nostack, nomem))
+            asm!("hlt", options(nostack, nomem))
         }
     }
 }

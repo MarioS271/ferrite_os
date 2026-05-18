@@ -19,7 +19,8 @@ static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(
 #[no_mangle]
 extern "C" fn kmain() -> ! {
     logging::serial::init_com1();
-    logging::serial::write_string_to_com1("Hello, Rusty World!");
+    logging::serial::write_string_to_com1("\n-------------------------\n\n");
+    logging::serial::write_string_to_com1("Hello, FerriteOS!\n");
 
     if let Some(limine_fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
         if let Some(limine_fb) = limine_fb_response.framebuffers().first() {
@@ -28,6 +29,8 @@ extern "C" fn kmain() -> ! {
     }
 
     screen::basic::font::init_font_header();
+
+    kprint!("Hello, {}!", "World");
 
     panic::kernel_panic(
         types::panic_codes::PanicCode::ManuallyTriggeredPanic,

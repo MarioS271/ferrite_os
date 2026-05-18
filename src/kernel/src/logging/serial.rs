@@ -1,5 +1,5 @@
 //! serial.rs
-//! Serial Logging
+//! Serial Logging on COM1
 //!
 //! Authors: MarioS271
 //! Licensed via the AGPLv3 license

@@ -5,4 +5,4 @@
 
 //! This module contains data structures such as the framebuffer struct
 
-pub mod panic_codes;
+pub(crate) mod panic_codes;
