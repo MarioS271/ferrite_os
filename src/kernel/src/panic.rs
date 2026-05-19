@@ -22,7 +22,7 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text
 
             use crate::screen::basic::text::draw_string;
 
-            draw_string(fb, "Panic!\n", &mut x, &mut y, Some(0x00FF0000));
+            draw_string(fb, "Kernel Panic!\n", &mut x, &mut y, Some(0x00FF0000));
             draw_string(fb, panic_code.as_str(), &mut x, &mut y, None);
             draw_string(fb, "\n", &mut x, &mut y, None);
             draw_string(fb, panic_message, &mut x, &mut y, None);

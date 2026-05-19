@@ -7,4 +7,3 @@
 
 pub(crate) mod kernel_print;
 pub(crate) mod serial;
-mod vga;

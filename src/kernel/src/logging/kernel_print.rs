@@ -6,7 +6,7 @@
 
 pub fn kprint(string: &str) {
     super::serial::write_string_to_com1(string);
-    super::vga::print(string);
+    crate::screen::basic::text::print_to_basic_fb(string);
 }
 
 pub struct KernelWriter;
