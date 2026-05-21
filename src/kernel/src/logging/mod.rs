@@ -1,4 +1,4 @@
-//! mod.rs (logging)
+//! logging/mod.rs
 //!
 //! Authors: MarioS271
 //! Licensed via the AGPLv3 license

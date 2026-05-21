@@ -1,4 +1,4 @@
-//! mod.rs (screen)
+//! screen/mod.rs
 //!
 //! Authors: MarioS271
 //! Licensed via the AGPLv3 license

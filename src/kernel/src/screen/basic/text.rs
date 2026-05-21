@@ -1,4 +1,4 @@
-//! text.rs
+//! screen/basic/text.rs
 //! String drawing and printing to the basic framebuffer
 //!
 //! Authors: MarioS271

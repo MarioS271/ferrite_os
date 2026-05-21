@@ -1,3 +1,4 @@
+#![feature(abi_x86_interrupt)]
 //! main.rs
 //! Main kernel entrypoint
 //!
@@ -7,10 +8,11 @@
 #![no_std]
 #![no_main]
 
-mod panic;
-mod screen;
 mod types;
+mod panic;
+mod arch;
 mod logging;
+mod screen;
 
 use limine::request::FramebufferRequest;
 
@@ -18,6 +20,7 @@ static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(
 
 #[no_mangle]
 extern "C" fn kmain() -> ! {
+    // Init logging
     logging::serial::init_com1();
 
     if let Some(limine_fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
@@ -29,9 +32,17 @@ extern "C" fn kmain() -> ! {
 
     kprint!("Hello, FerriteOS!\n");
 
+
+    // Init TSS, GDT, IDT
+    arch::tss::init();
+    arch::gdt::init();
+    arch::idt::init();
+
+
+    // To halt the kernel on finish (temporary)
     panic::kernel_panic(
         types::panic_codes::PanicCode::ManuallyTriggeredPanic,
-        "Kernel executed successfully! :)",
+        "Kernel executed successfully! :)", 
         true
     );
 }

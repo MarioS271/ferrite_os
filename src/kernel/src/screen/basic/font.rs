@@ -1,4 +1,4 @@
-//! font.rs
+//! screen/basic/font.rs
 //! Kernel font(s) and character rendering
 //!
 //! Authors: MarioS271

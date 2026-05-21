@@ -7,7 +7,6 @@
 use crate::types::panic_codes::PanicCode;
 use core::arch::asm;
 use core::panic::PanicInfo;
-use crate::screen::basic::framebuffer::clear_framebuffer;
 
 /// Kernel's custom panic handler, prints debug text and halts
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text: bool) -> ! {

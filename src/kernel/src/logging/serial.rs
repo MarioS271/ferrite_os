@@ -1,4 +1,4 @@
-//! serial.rs
+//! logging/serial.rs
 //! Serial Logging on COM1
 //!
 //! Authors: MarioS271

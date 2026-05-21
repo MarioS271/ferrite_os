@@ -1,4 +1,4 @@
-//! mod.rs (types)
+//! types/mod.rs
 //!
 //! Authors: MarioS271
 //! Licensed via the AGPLv3 license

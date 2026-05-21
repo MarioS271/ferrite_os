@@ -1,4 +1,4 @@
-//! framebuffer
+//! screen/basic/framebuffer.rs
 //! Basic Framebuffer received from Limine, used in early boot for logging
 //!
 //! Authors: MarioS271

@@ -1,4 +1,4 @@
-//! kernel_print.rs
+//! logging/kernel_print.rs
 //! Logging Macros
 //!
 //! Authors: MarioS271
