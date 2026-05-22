@@ -16,7 +16,7 @@ pub extern "x86-interrupt" fn handler(
     let cr2_value = Cr2::read_raw();
 
     kprint!("\n\nPage Fault!\n");
-    kprint!("CR2 Value: {cr2_value}");
+    kprint!("CR2 Value: {cr2_value}\n");
     kprint!("Error Code:\n");
     kprint!("{error_code:?}");
     kprint!("{interrupt_stack_frame:#?}\n");

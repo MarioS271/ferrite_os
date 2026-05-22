@@ -10,13 +10,18 @@ use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
 
 pub static TASK_STATE_SEGMENT: Once<TaskStateSegment> = Once::new();
-static mut DOUBLE_FAULT_STACK: [u8; 4096] = [0u8; 4096];
+static mut DOUBLE_FAULT_STACK: DoubleFaultStack = DoubleFaultStack{ array: [0u8; 4096] };
+
+#[repr(align(16))]
+struct DoubleFaultStack {
+    array: [u8; 4096]
+}
 
 pub fn init() {
     // Safe because we are still single threaded at this point
     unsafe {
         let top_df_stack_addr = VirtAddr::from_ptr(
-            DOUBLE_FAULT_STACK.as_ptr().add(DOUBLE_FAULT_STACK.len())
+            DOUBLE_FAULT_STACK.array.as_ptr().add(DOUBLE_FAULT_STACK.array.len())
         );
 
         TASK_STATE_SEGMENT.call_once(|| {
