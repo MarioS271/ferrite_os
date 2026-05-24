@@ -2,7 +2,7 @@
 //! Panic Codes used to differentiate different kinds of kernel panics
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 #[repr(u16)]
 pub enum PanicCode {

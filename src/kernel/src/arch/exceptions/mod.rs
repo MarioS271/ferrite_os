@@ -1,7 +1,7 @@
 //! arch/exceptions/mod.rs
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 //! This module contains exception handlers for all kinds of faults
 

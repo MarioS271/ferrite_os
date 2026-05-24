@@ -1,7 +1,7 @@
 //! logging/mod.rs
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 //! This module contains code for logging, like serial logging, logging macros and more
 

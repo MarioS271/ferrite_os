@@ -2,7 +2,7 @@
 //! Basic Framebuffer received from Limine, used in early boot for logging
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 // use crate::types::framebuffer::FramebufferData;
 use spin::Once;

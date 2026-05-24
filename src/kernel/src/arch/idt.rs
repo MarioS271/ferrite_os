@@ -2,7 +2,7 @@
 //! Interrupt Descriptor Table Struct
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use spin::Once;

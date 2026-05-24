@@ -52,4 +52,4 @@ The kernel is a single Cargo workspace member (`src/kernel`).
 Compilation uses Rust nightly with `build-std` to build `core` and `compiler_builtins` from source.
 
 <br><hr><br>
-This project is licensed under the **GNU Affero General Public License v3.0**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for details.

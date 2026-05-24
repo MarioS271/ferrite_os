@@ -6,7 +6,7 @@ Authors:
     MarioS271
 
 Copyright:
-    AGPLv3 License
+    SPDX-License-Identifier: GPL-3.0-only
 
 Description:
     Build script for ferrite_os — Rust x86-64 bare metal OS.

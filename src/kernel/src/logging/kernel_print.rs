@@ -2,7 +2,7 @@
 //! Logging Macros
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 pub fn kprint(string: &str) {
     super::serial::write_string_to_com1(string);

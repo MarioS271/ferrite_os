@@ -6,7 +6,7 @@ Authors:
     MarioS271
 
 Copyright:
-    GPLv3 License
+    SPDX-License-Identifier: GPL-3.0-only
 
 Description:
     Watches the ferrite_os QEMU serial TCP port and connects via ncat

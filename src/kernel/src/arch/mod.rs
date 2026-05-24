@@ -1,7 +1,7 @@
 //! arch/mod.rs
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 //! This module contains definitions for the x86_64 architecture such as the GDT, IDT or TSS
 

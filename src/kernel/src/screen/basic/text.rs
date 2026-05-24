@@ -2,7 +2,7 @@
 //! String drawing and printing to the basic framebuffer
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 use spin::Mutex;
 use crate::screen::basic::framebuffer::BasicFramebufferData;

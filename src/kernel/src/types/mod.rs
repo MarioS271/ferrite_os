@@ -1,7 +1,7 @@
 //! types/mod.rs
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 //! This module contains data structures such as the framebuffer struct
 

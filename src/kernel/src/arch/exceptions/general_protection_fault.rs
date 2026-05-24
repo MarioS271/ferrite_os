@@ -2,7 +2,7 @@
 //! General Protection Fault Exception Handler
 //!
 //! Authors: MarioS271
-//! Licensed via the AGPLv3 license
+//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use crate::panic::kernel_panic;
