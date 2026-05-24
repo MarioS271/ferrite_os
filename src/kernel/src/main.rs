@@ -15,10 +15,11 @@ mod logging;
 mod screen;
 mod mem;
 
-use limine::request::{FramebufferRequest, MemmapRequest};
+use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
+static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
 #[no_mangle]
 extern "C" fn kmain() -> ! {
@@ -41,16 +42,18 @@ extern "C" fn kmain() -> ! {
     arch::idt::init();
 
 
-    // Init PMM
+    // Init physical mem manager
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
-        mem::pmm::init(memmap_response.entries());
+        if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
+            mem::pmm::init(memmap_response.entries(), hhdm_response.offset);
+        }
     }
 
 
     // To halt the kernel on finish (temporary)
-    panic::kernel_panic(
-        types::panic_codes::PanicCode::ManuallyTriggeredPanic,
-        "Kernel executed successfully! :)", 
-        true
-    );
+    loop {
+        unsafe {
+            core::arch::asm!("hlt", options(nostack, nomem))
+        }
+    }
 }
