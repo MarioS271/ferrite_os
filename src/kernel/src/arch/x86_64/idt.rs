@@ -1,4 +1,4 @@
-//! arch/idt.rs
+//! arch/x86_64/idt.rs
 //! Interrupt Descriptor Table Struct
 //!
 //! Authors: MarioS271

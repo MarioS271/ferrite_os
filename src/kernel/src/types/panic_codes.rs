@@ -20,6 +20,7 @@ pub enum PanicCode {
     PmmNotInitialized = 0x0301,
     DoubleFree = 0x0302,
     IllegalFree = 0x0303,
+    OutOfMemory = 0x0304,
 
     // Display
     InvalidPsf2MagicNumber = 0x1000,
@@ -42,6 +43,7 @@ impl PanicCode {
             PanicCode::PmmNotInitialized => "PmmNotInitialized",
             PanicCode::DoubleFree => "DoubleFree",
             PanicCode::IllegalFree => "IllegalFree",
+            PanicCode::OutOfMemory => "OutOfMemory",
 
             // Display
             PanicCode::InvalidPsf2MagicNumber => "InvalidPsf2MagicNumber"

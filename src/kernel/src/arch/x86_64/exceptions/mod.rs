@@ -1,4 +1,4 @@
-//! arch/exceptions/mod.rs
+//! arch/x86_64/exceptions/mod.rs
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only

@@ -34,13 +34,10 @@ extern "C" fn kmain() -> ! {
     }
 
     kprint!("Hello, FerriteOS!\n");
+    
 
-
-    // Init TSS, GDT, IDT
-    arch::tss::init();
-    arch::gdt::init();
-    arch::idt::init();
-
+    // Init arch-specific features (GDT, IDT for x86_64, ...)
+    arch::init();
 
     // Init physical mem manager
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {

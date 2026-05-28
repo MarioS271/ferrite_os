@@ -12,7 +12,7 @@ use x86_64::PhysAddr;
 use limine::memmap;
 use limine::memmap::MEMMAP_USABLE;
 
-static FRAME_SIZE: u64 = 4096;     // 4 KiB frame size
+pub static FRAME_SIZE: u64 = 4096;     // 4 KiB frame size
 static PMM_DATA: Once<PmmData> = Once::new();
 
 struct PmmData {
