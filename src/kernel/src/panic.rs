@@ -5,15 +5,14 @@
 //! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::types::panic_codes::PanicCode;
+use crate::logging::serial::write_to_serial;
 use core::arch::asm;
 use core::panic::PanicInfo;
+use crate::arch;
 
 /// Kernel's custom panic handler, prints debug text and halts
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text: bool) -> ! {
-    // Necessary to disable any interrupts to prevent the panic sequence from being interrupted
-    unsafe {
-        asm!("cli", options(nostack, nomem))
-    }
+    arch::instructions::disable_interrupts();
 
     if print_debug_text {
         if let Some(fb) = crate::screen::basic::framebuffer::get_framebuffer() {
@@ -31,40 +30,27 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text
         }
     }
 
-    use crate::logging::serial::write_string_to_com1;
-
-    write_string_to_com1("\nKernel Panic!\n");
-    write_string_to_com1(panic_code.as_str());
-    write_string_to_com1("\n");
-    write_string_to_com1(panic_message);
+    write_to_serial("\nKernel Panic!\n");
+    write_to_serial(panic_code.as_str());
+    write_to_serial("\n");
+    write_to_serial(panic_message);
 
     loop {
-        // Halt the cpu cause the system is gone
-        unsafe {
-            asm!("hlt", options(nostack, nomem))
-        }
+        arch::instructions::halt_cpu();
     }
 }
 
 /// Rust's internal panic handler, only used when rust runtime faults occur
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
-    // Necessary to disable any interrupts to prevent the panic sequence from being interrupted
-    unsafe {
-        asm!("cli", options(nostack, nomem))
-    }
+    arch::instructions::disable_interrupts();
 
-    use crate::logging::serial::write_string_to_com1;
-
-    write_string_to_com1("\nFATAL: rustlang panic handler fired!\n");
-    write_string_to_com1(
+    write_to_serial("\nFATAL: rustlang panic handler fired!\n");
+    write_to_serial(
         panic_info.message().as_str().unwrap_or("(No panic info message given)")
     );
 
     loop {
-        // Halt the cpu cause the system is gone
-        unsafe {
-            asm!("hlt", options(nostack, nomem))
-        }
+        arch::instructions::halt_cpu();
     }
 }
