@@ -14,6 +14,12 @@
 
 ---
 
+## Multi-Arch Code Organization
+
+`arch/`, `logging/`, and `mem/` each contain an `x86_64/` and `aarch64/` subdirectory. The parent `mod.rs` in each selects the correct submodule at compile time via `#[cfg(target_arch)]` and re-exports its public items with `pub(crate) use arch_name::*`, so all call sites use the parent path (e.g. `arch::instructions::halt_cpu()`). aarch64 modules are stubs that emit `compile_error!` to catch accidental cross-compilation early. New architectures follow the same pattern: add a subdirectory, implement the required interface, add the `#[cfg]` pair in the parent.
+
+---
+
 ## Boot Sequence
 
 ```

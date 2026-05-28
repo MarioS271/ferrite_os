@@ -51,5 +51,7 @@ Incremental builds use MD5 hashing to skip docker when nothing has changed.
 The kernel is a single Cargo workspace member (`src/kernel`).
 Compilation uses Rust nightly with `build-std` to build `core` and `compiler_builtins` from source.
 
+Arch-specific code lives under `arch/<arch>/`, `logging/<arch>/`, and `mem/<arch>/`. Each parent `mod.rs` selects the correct submodule at compile time via `#[cfg(target_arch)]` and re-exports its contents, so the rest of the kernel uses architecture-independent paths. aarch64 directories exist as stubs and will `compile_error!` if targeted.
+
 <br><hr><br>
 This project is licensed under the **GNU General Public License v3.0** (`GPL-3.0-only`). See the [LICENSE](LICENSE) file for details.
