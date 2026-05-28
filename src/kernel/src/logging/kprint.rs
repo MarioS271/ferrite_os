@@ -1,11 +1,11 @@
-//! logging/kernel_print.rs
+//! logging/kprint.rs
 //! Logging Macros
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-pub fn kprint(string: &str) {
-    super::serial::write_string_to_com1(string);
+fn kprint(string: &str) {
+    super::serial::write_to_serial(string);
     crate::screen::basic::text::print_to_basic_fb(string);
 }
 
@@ -21,7 +21,7 @@ impl core::fmt::Write for KernelWriter {
 macro_rules! kprint {
     ($($arg:tt)*) => ({
         let _ = core::fmt::write(
-            &mut $crate::logging::kernel_print::KernelWriter,
+            &mut $crate::logging::kprint::KernelWriter,
             format_args!($($arg)*)
         );
     });

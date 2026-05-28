@@ -5,5 +5,10 @@
 
 //! This module contains memory related stuff such as the virtual memory manager
 
+#[cfg(target_arch = "x86_64")] mod x86_64;
+#[cfg(target_arch = "x86_64")] pub(crate) use x86_64::*;
+
+#[cfg(target_arch = "aarch64")] mod aarch64;
+#[cfg(target_arch = "aarch64")] pub(crate) use crate::logging::aarch64::*;
+
 pub(crate) mod pmm;
-pub(crate) mod vmm;

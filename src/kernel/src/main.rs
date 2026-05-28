@@ -24,7 +24,7 @@ static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 #[no_mangle]
 extern "C" fn kmain() -> ! {
     // Init logging
-    logging::serial::init_com1();
+    logging::serial::init_serial();
 
     if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
         if let Some(fb) = fb_response.framebuffers().first() {
@@ -34,7 +34,7 @@ extern "C" fn kmain() -> ! {
     }
 
     kprint!("Hello, FerriteOS!\n");
-    
+
 
     // Init arch-specific features (GDT, IDT for x86_64, ...)
     arch::init();

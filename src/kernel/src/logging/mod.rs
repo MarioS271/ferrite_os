@@ -3,7 +3,12 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-//! This module contains code for logging, like serial logging, logging macros and more
+//! This module contains code for logging (serial logging, kprint)
 
-pub(crate) mod kernel_print;
-pub(crate) mod serial;
+#[cfg(target_arch = "x86_64")] mod x86_64;
+#[cfg(target_arch = "x86_64")] pub(crate) use x86_64::*;
+
+#[cfg(target_arch = "aarch64")] mod aarch64;
+#[cfg(target_arch = "aarch64")] pub(crate) use aarch64::*;
+
+pub(crate) mod kprint;

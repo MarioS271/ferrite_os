@@ -1,4 +1,4 @@
-//! logging/serial.rs
+//! logging/x86_64/serial.rs
 //! Serial Logging on COM1
 //!
 //! Authors: MarioS271
@@ -8,7 +8,7 @@ use x86_64::instructions::port::Port;
 
 static COM1_PORT_BASE_ADDRESS: u16 = 0x03F8;
 
-pub fn init_com1() {
+pub fn init_serial() {
     let at_offset = |offset: u16| -> Port<u8> {
         Port::<u8>::new(COM1_PORT_BASE_ADDRESS + offset)
     };
@@ -39,14 +39,14 @@ pub fn init_com1() {
     }
 }
 
-pub fn write_string_to_com1(string: &str) {
-    let mut com1_port: Port<u8> = Port::new(COM1_PORT_BASE_ADDRESS);
+pub fn write_to_serial(string: &str) {
+    let mut serial_port: Port<u8> = Port::new(COM1_PORT_BASE_ADDRESS);
 
     for byte in string.bytes() {
         // This calls write_byte which was already declared to be safe because
         // it adheres to 16550 spec
         unsafe {
-            com1_port.write(byte);
+            serial_port.write(byte);
         }
     }
 }
