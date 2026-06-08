@@ -4,17 +4,25 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
+use crate::kprint;
 use crate::mem::pmm;
-use crate::mem::pmm::FRAME_SIZE;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
+use spin::Once;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PhysFrame};
 use x86_64::PhysAddr;
 
-struct VmmData {
+static VMM_DATA: Once<VmmData> = Once::new();
 
+struct VmmData {
+    plm4_ptr: *mut PageTable,
+    hhdm_offset: u64,
 }
+
+// Safe because all access is controlled via the Once
+unsafe impl Send for VmmData {}
+unsafe impl Sync for VmmData {}
 
 pub fn init(hhdm_offset: u64) {
     let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
@@ -50,4 +58,15 @@ pub fn init(hhdm_offset: u64) {
     unsafe {
         Cr3::write(phys_frame, current_cr3_flags);
     }
+
+    kprint!("[VMM] allocated frame ");
+
+    VMM_DATA.call_once(|| VmmData{
+        plm4_ptr,
+        hhdm_offset,
+    });
+}
+
+pub fn get() -> &'static VmmData {
+    VMM_DATA.get().unwrap()
 }
