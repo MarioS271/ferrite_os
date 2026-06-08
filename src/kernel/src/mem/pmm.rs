@@ -124,7 +124,7 @@ pub fn alloc() -> Option<PhysAddr> {
     if PMM_DATA.get().is_none() {
         kernel_panic(
             PanicCode::PmmNotInitialized,
-            "Cannot alloc(), PMM is not initialized",
+            "Cannot pmm::alloc(), PMM is not initialized",
             true
         );
     }
@@ -146,8 +146,6 @@ pub fn alloc() -> Option<PhysAddr> {
             let frame_index = byte_index * 8 + bit_position as u64;
             let frame_address = frame_index * FRAME_SIZE;
 
-            kprint!("[PMM] allocated frame {frame_index} at addr {frame_address}\n");
-
             return Some(PhysAddr::new_truncate(frame_address));
         }
     }
@@ -161,7 +159,7 @@ pub fn free(addr: PhysAddr) {
     if PMM_DATA.get().is_none() {
         kernel_panic(
             PanicCode::PmmNotInitialized,
-            "Cannot free(), PMM is not initialized",
+            "Cannot pmm::free(), PMM is not initialized",
             true
         );
     }
@@ -172,7 +170,7 @@ pub fn free(addr: PhysAddr) {
     if frame_index == 0 {
         kernel_panic(
             PanicCode::IllegalFree,
-            "Attempting to free() frame 0",
+            "Attempting to pmm::free() frame 0",
             true
         );
     }
@@ -180,7 +178,7 @@ pub fn free(addr: PhysAddr) {
     if frame_index >= pmm.bitmap_start_frame && frame_index < pmm.bitmap_end_frame {
         kernel_panic(
             PanicCode::IllegalFree,
-            "Attempting to free() in the range of the pmm bitmap",
+            "Attempting to pmm::free() in the range of the pmm bitmap",
             true
         );
     }
@@ -188,7 +186,7 @@ pub fn free(addr: PhysAddr) {
     if frame_index >= pmm.total_frames {
         kernel_panic(
             PanicCode::IllegalFree,
-            "Attempting to free() outside of usable memory",
+            "Attempting to pmm::free() outside of usable memory",
             true
         );
     }
@@ -203,7 +201,7 @@ pub fn free(addr: PhysAddr) {
         if byte & (1 << bit_offset) == 0u8 {
             kernel_panic(
                 PanicCode::DoubleFree,
-                "Attempting to free() a frame which is already freed",
+                "Attempting to pmm::free() a frame which is already freed",
                 true
             );
         }
