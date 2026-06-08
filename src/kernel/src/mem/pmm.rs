@@ -83,7 +83,9 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     }
 
     let bitmap_start_frame = bitmap_physical_base_addr / FRAME_SIZE;
-    let bitmap_end_frame = (bitmap_physical_base_addr + bitmap_bytes).div_ceil(FRAME_SIZE);
+
+    // Subtracting one so that the value is the last used frame, not the one after
+    let bitmap_end_frame = ((bitmap_physical_base_addr + bitmap_bytes).div_ceil(FRAME_SIZE)) - 1;
 
     kprint!("[PMM] bitmap_start_frame={bitmap_start_frame}\n");
     kprint!("[PMM] bitmap_end_frame={bitmap_end_frame}\n");
