@@ -43,9 +43,12 @@ extern "C" fn kmain() -> ! {
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
         if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
             mem::pmm::init(memmap_response.entries(), hhdm_response.offset);
+            mem::vmm::init(hhdm_response.offset);
         }
     }
 
+
+    kprint!("Kernel ran successfully!");
 
     // To halt the kernel on finish (temporary)
     loop {
