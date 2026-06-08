@@ -59,7 +59,7 @@ pub fn init(hhdm_offset: u64) {
         Cr3::write(phys_frame, current_cr3_flags);
     }
 
-    kprint!("[VMM] allocated frame ");
+    kprint!("[VMM] allocated frame for plm4 at phys addr {phys_addr_u64:#x}\n");
 
     VMM_DATA.call_once(|| VmmData{
         plm4_ptr,
