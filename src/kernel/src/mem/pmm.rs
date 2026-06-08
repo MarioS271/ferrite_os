@@ -102,7 +102,7 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
             let frame_byte_offset = frame as usize / 8;
             let frame_bit_offset = frame % 8;
 
-            if frame == 0 || (frame >= bitmap_start_frame && frame < bitmap_end_frame) {
+            if frame == 0 || (frame >= bitmap_start_frame && frame <= bitmap_end_frame) {
                 continue;
             }
 
@@ -177,7 +177,7 @@ pub fn free(addr: PhysAddr) {
         );
     }
 
-    if frame_index >= pmm.bitmap_start_frame && frame_index < pmm.bitmap_end_frame {
+    if frame_index >= pmm.bitmap_start_frame && frame_index <= pmm.bitmap_end_frame {
         kernel_panic(
             PanicCode::IllegalFree,
             "Attempting to pmm::free() in the range of the pmm bitmap",
