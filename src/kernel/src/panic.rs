@@ -4,11 +4,10 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
+use crate::arch;
 use crate::types::panic_codes::PanicCode;
 use crate::logging::serial::write_to_serial;
-use core::arch::asm;
 use core::panic::PanicInfo;
-use crate::arch;
 
 /// Kernel's custom panic handler, prints debug text and halts
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text: bool) -> ! {

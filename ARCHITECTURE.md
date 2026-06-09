@@ -6,17 +6,44 @@
 
 ## Goals
 
+**In scope now:** the kernel only — bootloader integration, memory management, process model, syscall layer, VFS, TTY, and enough to run unmodified Linux ELF binaries.
+
+**Tentative / not yet decided:**
+- A native shell (fsh) — may just use an existing shell instead
+- Wayland compositor, GNOME, Wine integration — long-term aspirations, not committed
+
+**Kernel goals:**
 - Full Linux x86_64 ABI compatibility (run unmodified Linux ELF binaries)
 - Native namespace-based VFS (`vdev:/`, `dev:/`, `proc:/`, `sys:/`, `file:/`)
 - Both classic Unix paths and native namespace paths accepted everywhere
-- Rust throughout the kernel
-- Eventually: Wayland compositor, GNOME, Wine integration
+- Rust throughout
 
 ---
 
 ## Multi-Arch Code Organization
 
-`arch/`, `logging/`, and `mem/` each contain an `x86_64/` and `aarch64/` subdirectory. The parent `mod.rs` in each selects the correct submodule at compile time via `#[cfg(target_arch)]` and re-exports its public items with `pub(crate) use arch_name::*`, so all call sites use the parent path (e.g. `arch::instructions::halt_cpu()`). aarch64 modules are stubs that emit `compile_error!` to catch accidental cross-compilation early. New architectures follow the same pattern: add a subdirectory, implement the required interface, add the `#[cfg]` pair in the parent.
+`arch/`, `logging/`, and `mem/` each contain an `x86_64/` and `aarch64/` subdirectory. The parent `mod.rs` in each does two things:
+
+1. **Selects** the correct submodule at compile time via `#[cfg(target_arch = "...")]`.
+2. **Re-exports** its contents with `pub(crate) use arch_name::*`, so all call sites reference the parent path (e.g. `arch::init()`, `mem::vmm::init()`) without knowing which arch is underneath. Adding the arch name to every call site would couple the rest of the kernel to a specific target — the re-export is what prevents that.
+
+The `aarch64/` submodules contain only `compile_error!("not implemented")`. This is intentional: if the kernel were accidentally compiled for aarch64, a silent no-op would be harder to notice than an immediate build failure.
+
+### Required interface per module
+
+| Module     | What each arch submodule must provide                                        |
+|------------|------------------------------------------------------------------------------|
+| `arch/`    | `pub(crate) fn init()` — sequences hardware init (TSS → GDT → IDT on x86_64) |
+| `logging/` | serial write backend consumed by `kprint!`                                   |
+| `mem/`     | `pub(crate) mod vmm` — virtual memory manager                                |
+
+### Adding a new architecture
+
+1. Create a subdirectory (e.g. `arch/riscv64/`).
+2. Implement the required interface listed above.
+3. Add the `#[cfg]` / `pub(crate) use` pair in the parent `mod.rs`.
+
+The aarch64 stub can be replaced the same way — delete the `compile_error!` and implement the interface.
 
 ---
 
@@ -100,7 +127,9 @@ pub fn stats() -> PmmStats          // for proc:/meminfo
 
 Sits above PMM. Manages per-process virtual address spaces and the kernel's own mappings.
 
-**Responsibilities:**
+**Current state:** `init(hhdm_offset)` allocates a new PML4 frame via PMM, zeroes user-half entries (0–255), copies Limine's kernel-half entries (256–511), and switches CR3 to the kernel-owned table. State stored in `Once<VmmData>` (`plm4_ptr`, `hhdm_offset`); accessible via `vmm::get()`. `map_page(virt, phys, flags)` walks P4→P2 allocating intermediate frames, then sets the P1 entry; intermediate entries inherit `USER_ACCESSIBLE` from caller flags, use `PRESENT | WRITABLE` otherwise.
+
+**Planned responsibilities:**
 - Map/unmap/remap virtual → physical via page tables
 - Handle page faults (CoW, stack growth, lazy allocation)
 - Implement `mmap`, `munmap`, `mprotect`, `brk`
@@ -163,18 +192,18 @@ return value in rax
 
 Syscall numbers match Linux exactly. Priority syscalls for reaching a shell:
 
-| Number | Name | Notes |
-|--------|------|-------|
-| 0 | read | |
-| 1 | write | |
-| 2 | open | path goes through namespace normalizer |
-| 9 | mmap | |
-| 12 | brk | returns old brk on failure |
-| 57 | fork | CoW |
-| 59 | execve | ELF loader |
-| 60 | exit | |
-| 158 | arch_prctl | `ARCH_SET_FS` for TLS — critical for musl/glibc |
-| 231 | exit_group | |
+| Number  | Name       | Notes                                           |
+|---------|------------|-------------------------------------------------|
+| 0       | read       |                                                 |
+| 1       | write      |                                                 |
+| 2       | open       | path goes through namespace normalizer          |
+| 9       | mmap       |                                                 |
+| 12      | brk        | returns old brk on failure                      |
+| 57      | fork       | CoW                                             |
+| 59      | execve     | ELF loader                                      |
+| 60      | exit       |                                                 |
+| 158     | arch_prctl | `ARCH_SET_FS` for TLS — critical for musl/glibc |
+| 231     | exit_group |                                                 |
 
 `arch_prctl(ARCH_SET_FS)` is the first syscall musl makes. It must work or nothing runs.
 
@@ -299,14 +328,14 @@ Delivery happens at syscall exit and interrupt return, never mid-syscall. `SA_RE
 
 ### Exception → Signal mapping
 
-| Vector | Exception | Signal |
-|--------|-----------|--------|
-| #0 | Divide by zero | SIGFPE |
-| #6 | Invalid opcode | SIGILL |
-| #11 | Segment not present | SIGBUS |
-| #13 | General protection fault | SIGSEGV |
-| #14 | Page fault | SIGSEGV or grow stack |
-| #19 | SIMD float exception | SIGFPE |
+| Vector  | Exception                | Signal                |
+|---------|--------------------------|-----------------------|
+| #0      | Divide by zero           | SIGFPE                |
+| #6      | Invalid opcode           | SIGILL                |
+| #11     | Segment not present      | SIGBUS                |
+| #13     | General protection fault | SIGSEGV               |
+| #14     | Page fault               | SIGSEGV or grow stack |
+| #19     | SIMD float exception     | SIGFPE                |
 
 ---
 
@@ -358,11 +387,11 @@ proc:/self/status
 
 ---
 
-## fsh — Ferrite Shell
+## fsh — Ferrite Shell (tentative)
 
-Native shell. Uses classic paths in its own code (works either way).
+Whether to write a native shell or use an existing one (busybox sh, bash) is undecided. This section captures what a native shell would require from the kernel, which is useful regardless — these are the kernel features needed before any shell can run.
 
-Required for basic operation:
+Required kernel support for a shell to work:
 - `fork` + `exec` for running programs
 - `pipe()` for `|`
 - `dup2()` for `<` `>` `>>`
@@ -370,8 +399,7 @@ Required for basic operation:
 - `SIGCHLD` for background jobs
 - `tcsetpgrp()` for job control
 - termios raw mode for line editing
-- `$PATH` resolution
-- Builtins: `cd` `pwd` `echo` `export` `exit` `jobs` `fg` `bg` `source`
+- `$PATH` resolution via `execve`
 
 ---
 
@@ -395,23 +423,25 @@ PMM (bitmap allocator)
                                         → dynamic linker (musl)
                                         → full signals (SA_RESTART, sigaltstack)
                                         → job control (SIGTTOU SIGTTIN SIGTSTP)
-                                        → fsh
-                                            → dev:/ (DRM/KMS, input)
-                                            → real filesystem (ext2/fat)
-                                            → networking
-                                            → Wayland/Weston
+                                        → [shell — native or ported, TBD]
+                                            → dev:/ (DRM/KMS, input)       [?]
+                                            → real filesystem (ext2/fat)    [?]
+                                            → networking                    [?]
+                                            → Wayland/Weston                [?]
 ```
 
 ---
 
 ## Compatibility Targets (in order)
 
-| Milestone                     | What it proves                          |
-|-------------------------------|-----------------------------------------|
-| musl statically linked binary | PMM + VMM + syscalls + ELF loader work  |
-| busybox sh                    | procfs, signals, TTY line discipline    |
-| bash + coreutils              | Full POSIX process model, job control   |
-| Xorg/twm                      | DRM/KMS driver, input subsystem         |
-| GTK3 app                      | D-Bus, fontconfig, GIO                  |
-| XFCE                          | Light desktop, reduced systemd coupling |
-| GNOME                         | Full stack                              |
+Targets up to and including a running shell are committed. Everything after that is aspirational.
+
+| Milestone                     | What it proves                          | Status       |
+|-------------------------------|-----------------------------------------|--------------|
+| musl statically linked binary | PMM + VMM + syscalls + ELF loader work  | planned      |
+| busybox sh                    | procfs, signals, TTY line discipline    | planned      |
+| bash + coreutils              | Full POSIX process model, job control   | planned      |
+| Xorg/twm                      | DRM/KMS driver, input subsystem         | aspirational |
+| GTK3 app                      | D-Bus, fontconfig, GIO                  | aspirational |
+| XFCE                          | Light desktop, reduced systemd coupling | aspirational |
+| GNOME                         | Full stack                              | aspirational |

@@ -16,6 +16,8 @@ mod screen;
 mod mem;
 
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
+use x86_64::structures::paging::PageTableFlags;
+use x86_64::VirtAddr;
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
@@ -45,6 +47,22 @@ extern "C" fn kmain() -> ! {
             mem::pmm::init(memmap_response.entries(), hhdm_response.offset);
             mem::vmm::init(hhdm_response.offset);
         }
+    }
+
+
+    // temporary test code for vmm map_page, should write and read same val (0xdeadbeef)
+    unsafe {
+        let test_virt = VirtAddr::new(0xffff_8002_0000_0000);
+        let phys = mem::pmm::alloc().unwrap();
+
+        mem::vmm::map_page(test_virt, phys, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+
+        let ptr = test_virt.as_mut_ptr::<u64>();
+        ptr.write_volatile(0xdeadbeef);
+
+        let readback = ptr.read_volatile();
+
+        kprint!("[VMM TEST] wrote 0xdeadbeef, read back {:#x}\n", readback);
     }
 
 
