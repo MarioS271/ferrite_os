@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FerriteOS - browser demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+      crossorigin="anonymous">
+<style>
+  body { padding: 2rem 0; }
+  pre.warn { background: #fff3cd; padding: .75rem; border-radius: .25rem; }
+</style>
+</head>
+<body>
+<main class="container">
+  <h1>FerriteOS</h1>
+  <p class="lead">A bare-metal x86-64 hobby OS in Rust, booted via Limine in your browser through QEMU compiled to WebAssembly.</p>
+
+  <p>
+    <a class="btn btn-primary btn-lg" href="./ferrite-x86_64.html">Start demo</a>
+    <a class="btn btn-outline-secondary btn-lg" href="https://github.com/MarioS271/ferrite_os">Source on GitHub</a>
+    <a class="btn btn-outline-secondary btn-lg" href="./ferrite_os.iso" download>Download ISO</a>
+  </p>
+
+  <h2 class="h4 mt-4">What you're about to run</h2>
+  <ul>
+    <li>QEMU <code>qemu-system-x86_64</code> compiled to WebAssembly (from <a href="https://github.com/ktock/qemu-wasm">ktock/qemu-wasm</a>).</li>
+    <li>EDK2 OVMF firmware (x86_64) loaded as <code>-bios</code>.</li>
+    <li>Limine v8.x bootloader chainloading the FerriteOS kernel ELF off a UEFI El Torito ISO.</li>
+  </ul>
+
+  <h2 class="h4 mt-4">Heads-up</h2>
+  <pre class="warn">First load fetches ~45 MB of WebAssembly + firmware + the kernel ISO.
+The page uses a service worker to enable SharedArrayBuffer (COOP/COEP),
+so if you see a "needs reload" notice on first visit, refresh once.</pre>
+
+  <p class="text-muted small mt-5">
+    Hosted on GitHub Pages. WebAssembly QEMU is Apache-2.0.
+    coi-serviceworker is MIT.
+  </p>
+</main>
+<!-- Register the COOP/COEP service worker here so SharedArrayBuffer is
+     already enabled by the time the user navigates to the demo page. -->
+<script src="./coi-serviceworker.js"></script>
+</body>
+</html>
