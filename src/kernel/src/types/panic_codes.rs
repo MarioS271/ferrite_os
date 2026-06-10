@@ -21,6 +21,8 @@ pub enum PanicCode {
     DoubleFree = 0x0302,
     IllegalFree = 0x0303,
     OutOfMemory = 0x0304,
+    // Memory: Paging
+    InvalidPageOperation = 0x320,
 
     // Display
     InvalidPsf2MagicNumber = 0x1000,
@@ -44,6 +46,8 @@ impl PanicCode {
             PanicCode::DoubleFree => "DoubleFree",
             PanicCode::IllegalFree => "IllegalFree",
             PanicCode::OutOfMemory => "OutOfMemory",
+            // Memory: Paging
+            PanicCode::InvalidPageOperation => "InvalidPageOperation",
 
             // Display
             PanicCode::InvalidPsf2MagicNumber => "InvalidPsf2MagicNumber"

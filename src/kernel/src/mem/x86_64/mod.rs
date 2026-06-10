@@ -6,3 +6,4 @@
 //! This module contains memory related stuff such as the virtual memory manager
 
 pub(crate) mod vmm;
+mod vmm_helpers;

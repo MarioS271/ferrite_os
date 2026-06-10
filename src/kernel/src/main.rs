@@ -50,19 +50,22 @@ extern "C" fn kmain() -> ! {
     }
 
 
-    // temporary test code for vmm map_page, should write and read same val (0xdeadbeef)
+    // temporary test code for vmm map_page/unmap_page
     unsafe {
         let test_virt = VirtAddr::new(0xffff_8002_0000_0000);
-        let phys = mem::pmm::alloc().unwrap();
+        let phys1 = mem::pmm::alloc().unwrap();
+        let phys2 = mem::pmm::alloc().unwrap();
 
-        mem::vmm::map_page(test_virt, phys, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-
+        mem::vmm::map_page(test_virt, phys1, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
         let ptr = test_virt.as_mut_ptr::<u64>();
         ptr.write_volatile(0xdeadbeef);
+        kprint!("[VMM TEST] map: wrote 0xdeadbeef, read {:#x}\n", ptr.read_volatile());
 
-        let readback = ptr.read_volatile();
+        mem::vmm::unmap_page(test_virt);
 
-        kprint!("[VMM TEST] wrote 0xdeadbeef, read back {:#x}\n", readback);
+        mem::vmm::map_page(test_virt, phys2, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+        ptr.write_volatile(0xcafebabe);
+        kprint!("[VMM TEST] remap: wrote 0xcafebabe, read {:#x}\n", ptr.read_volatile());
     }
 
 
