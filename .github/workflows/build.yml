@@ -1,0 +1,83 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # required for softprops/action-gh-release on tagged pushes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xorriso mtools
+
+      # Limine v8.x-binary is a moving branch; re-use the last clone until the
+      # cache key is manually busted or the workflow file changes.
+      - name: Cache Limine
+        id: cache-limine
+        uses: actions/cache@v4
+        with:
+          path: limine
+          key: limine-v8.x-binary-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+
+      - name: Clone and build Limine
+        if: steps.cache-limine.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/limine-bootloader/limine.git \
+            --branch=v8.x-binary --depth=1 limine
+          make -C limine
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          targets: x86_64-unknown-none
+          components: rust-src
+
+      # Caches ~/.cargo/registry, ~/.cargo/git, and ./target.
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build kernel
+        run: cargo build --target x86_64-unknown-none --manifest-path src/kernel/Cargo.toml
+
+      - name: Assemble ISO
+        run: |
+          mkdir -p build/iso/boot/limine build/iso/EFI/BOOT
+
+          cp target/x86_64-unknown-none/debug/kernel build/iso/kernel
+          sed 's/\r//' run/configs/limine.conf > build/iso/boot/limine/limine.conf
+
+          cp limine/BOOTX64.EFI        build/iso/EFI/BOOT/
+          cp limine/BOOTIA32.EFI       build/iso/EFI/BOOT/
+          cp limine/limine-uefi-cd.bin build/iso/boot/limine/
+
+          xorriso -as mkisofs \
+            -no-emul-boot \
+            --efi-boot boot/limine/limine-uefi-cd.bin \
+            -efi-boot-part --efi-boot-image \
+            --protective-msdos-label \
+            build/iso \
+            -o build/ferrite_os.iso
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrite_os-iso
+          path: build/ferrite_os.iso
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ferrite_os.iso
