@@ -127,7 +127,7 @@ pub fn stats() -> PmmStats          // for proc:/meminfo
 
 Sits above PMM. Manages per-process virtual address spaces and the kernel's own mappings.
 
-**Current state:** `init(hhdm_offset)` allocates a new PML4 frame via PMM, zeroes user-half entries (0–255), copies Limine's kernel-half entries (256–511), and switches CR3 to the kernel-owned table. State stored in `Once<VmmData>` (`plm4_ptr`, `hhdm_offset`); accessible via `vmm::get()`. `map_page(virt, phys, flags)` walks P4→P2 allocating intermediate frames, then sets the P1 entry; intermediate entries inherit `USER_ACCESSIBLE` from caller flags, use `PRESENT | WRITABLE` otherwise.
+**Current state:** `init(hhdm_offset)` allocates a new PML4 frame via PMM, zeroes user-half entries (0–255), copies Limine's kernel-half entries (256–511), and switches CR3 to the kernel-owned table. State stored in `Once<VmmData>` (`plm4_ptr`, `hhdm_offset`); accessible via `vmm::get()`. `map_page(virt, phys, flags)` walks P4→P2 allocating intermediate frames, then sets the P1 entry; intermediate entries inherit `USER_ACCESSIBLE` from caller flags, use `PRESENT | WRITABLE` otherwise. `unmap_page(virt)` walks P4→P1, panics if any entry along the way lacks `PRESENT`, clears the P1 entry via `set_unused()`, then flushes the TLB.
 
 **Planned responsibilities:**
 - Map/unmap/remap virtual → physical via page tables
