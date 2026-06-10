@@ -12,3 +12,4 @@
 #[cfg(target_arch = "aarch64")] pub(crate) use aarch64::*;
 
 pub(crate) mod pmm;
+mod heap;
