@@ -28,6 +28,7 @@
     <li>QEMU <code>qemu-system-x86_64</code> compiled to WebAssembly (from <a href="https://github.com/ktock/qemu-wasm">ktock/qemu-wasm</a>).</li>
     <li>EDK2 OVMF firmware (x86_64) loaded as <code>-bios</code>.</li>
     <li>Limine v8.x bootloader chainloading the FerriteOS kernel ELF off a UEFI El Torito ISO.</li>
+    <li><strong>Serial output only</strong> — the wasm binary has no graphical display support, so the kernel framebuffer is not rendered. The terminal shows COM1 serial output.</li>
   </ul>
 
   <h2 class="h4 mt-4">Heads-up</h2>

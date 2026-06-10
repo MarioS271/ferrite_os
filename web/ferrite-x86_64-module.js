@@ -9,6 +9,7 @@ Module.arguments = [
     '-M', 'q35',
     '-m', '256M',
     '-accel', 'tcg,tb-size=500',
+    '-vga', 'none',
     '-bios', '/pack-uefi/OVMF_CODE.fd',
     '-cdrom', '/pack-cdrom/ferrite_os.iso',
     '-nic', 'none',

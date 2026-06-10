@@ -22,9 +22,11 @@
   <div id="status" class="text-muted mb-2">Loading...</div>
   <div id="terminal"></div>
 
-  <p class="text-muted small mt-3">
-    QEMU args: <code>-M q35 -m 256M -bios OVMF_CODE.fd -cdrom ferrite_os.iso -nographic</code>.
-    All output is the kernel's COM1 serial.
+  <div class="alert alert-warning mt-3" role="alert">
+    <strong>Serial output only.</strong> The WebAssembly QEMU binary used here was built without graphical display support, so the framebuffer is not visible. All output shown below comes from the kernel's COM1 serial port. A VGA-capable wasm build is needed to see the framebuffer renderer.
+  </div>
+  <p class="text-muted small">
+    QEMU args: <code>-M q35 -m 256M -vga none -bios OVMF_CODE.fd -cdrom ferrite_os.iso -nographic -serial mon:stdio</code>
   </p>
 </main>
 
