@@ -49,6 +49,9 @@ extern "C" fn kmain() -> ! {
         }
     }
 
+    // Init heap allocator
+    mem::heap::init();
+
 
     // temporary test code for vmm map_page/unmap_page
     unsafe {
