@@ -9,11 +9,13 @@
 mod tss;
 mod gdt;
 mod idt;
-mod exceptions;
 pub(crate) mod instructions;
+mod exceptions;
+mod interrupts;
 
 pub(crate) fn init() {
     tss::init();
     gdt::init();
     idt::init();
+    interrupts::pic::init();
 }

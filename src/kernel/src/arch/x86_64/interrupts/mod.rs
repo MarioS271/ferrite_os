@@ -1,0 +1,8 @@
+//! arch/x86_64/interrupts/mod.rs
+//!
+//! Authors: MarioS271
+//! SPDX-License-Identifier: GPL-3.0-only
+
+//! This module contains definitions and code for the PIC/APIC (Interrups Controllers)
+
+pub mod pic;
