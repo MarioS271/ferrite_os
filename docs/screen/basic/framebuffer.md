@@ -41,7 +41,7 @@ Returns `Some` if the framebuffer has been initialized, `None` otherwise. Caller
 
 ---
 
-## `clear_framebuffer(fb)`
+## `fb.clear(&self)`
 
 Fills the entire framebuffer with `0u32` (black) by iterating over every pixel and writing with `write_volatile`. `write_volatile` is used to prevent the compiler from optimizing away the writes, since the memory is mapped I/O-like and the compiler has no way to know the writes are observable.
 

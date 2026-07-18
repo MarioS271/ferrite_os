@@ -37,15 +37,17 @@ pub fn get_framebuffer() -> Option<&'static BasicFramebufferData> {
     BASIC_FRAMEBUFFER.get()
 }
 
-pub fn clear_framebuffer(fb: &BasicFramebufferData) {
-    for y in 0..fb.height {
-        for x in 0..fb.width {
-            // Safe because we're iterating inside the given fb bounds and only
-            // changing memory there
-            unsafe {
-                fb.fb_pointer
-                    .add(y as usize * fb.pixel_stride as usize + x as usize)
-                    .write_volatile(0u32);
+impl BasicFramebufferData {
+    pub fn clear(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                // Safe because we're iterating inside the given fb bounds and only
+                // changing memory there
+                unsafe {
+                    self.fb_pointer
+                        .add(y as usize * self.pixel_stride as usize + x as usize)
+                        .write_volatile(0u32);
+                }
             }
         }
     }
