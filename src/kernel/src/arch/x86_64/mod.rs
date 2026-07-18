@@ -3,19 +3,16 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-//! This module contains definitions for the x86_64 architecture such as the GDT, IDT, TSS
-//! or exceptions
+//! This module contains definitions for the x86_64 architecture such as GDT, IDT, TSS, PIC/APIC,
+//! interrupts and more
 
-mod tss;
-mod gdt;
-mod idt;
 pub(crate) mod instructions;
-mod exceptions;
 mod interrupts;
+mod tables;
 
 pub(crate) fn init() {
-    tss::init();
-    gdt::init();
-    idt::init();
+    tables::tss::init();
+    tables::gdt::init();
+    tables::idt::init();
     interrupts::pic::init();
 }

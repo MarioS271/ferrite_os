@@ -1,4 +1,4 @@
-//! arch/x86_64/tss.rs
+//! arch/x86_64/tables/tss.rs
 //! Task State Segment Struct
 //!
 //! Authors: MarioS271

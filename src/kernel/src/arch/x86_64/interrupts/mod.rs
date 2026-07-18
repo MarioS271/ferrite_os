@@ -5,4 +5,6 @@
 
 //! This module contains definitions and code for the PIC/APIC (Interrups Controllers)
 
-pub mod pic;
+pub(crate) mod faults;
+pub(crate) mod irqs;
+pub(crate) mod pic;

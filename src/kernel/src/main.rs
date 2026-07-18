@@ -54,44 +54,6 @@ extern "C" fn kmain() -> ! {
     // Init heap allocator
     mem::heap::init();
 
-    // temp test code for heap alloc
-    unsafe {
-        // basic allocation
-        let mut vec = Vec::new();
-        vec.push(0xbeef_u64);
-        assert_eq!(vec[0], 0xbeef);
-
-        // multiple live allocs
-        let box1 = Box::new(0x0001_u64);
-        let box2 = Box::new(0x0002_u64);
-        let box3 = Box::new(0x0003_u64);
-        assert_eq!(*box1, 0x0001);
-        assert_eq!(*box2, 0x0002);
-        assert_eq!(*box3, 0x0003);
-
-        // vec growth
-        let mut v: Vec<u64> = Vec::new();
-        for i in 0..64 {
-            v.push(i);
-        }
-        assert_eq!(v.len(), 64);
-        assert_eq!(v[63], 63);
-
-        // dealloc then realloc: drop box2, allocate again, heap must not corrupt
-        drop(box2);
-        let box4 = Box::new(0xdead_u64);
-        assert_eq!(*box4, 0xdead);
-
-        // nested: Vec<Box<u64>>
-        let mut nested: Vec<Box<u64>> = Vec::new();
-        for i in 0..8 {
-            nested.push(Box::new(i * 0x10));
-        }
-        for i in 0..8_u64 {
-            assert_eq!(*nested[i as usize], i * 0x10);
-        }
-    }
-
 
     kprint!("Kernel ran successfully!");
 

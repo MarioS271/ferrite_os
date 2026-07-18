@@ -1,5 +1,5 @@
-//! arch/x86_64/exceptions/double_fault.rs
-//! Double Fault Exception Handler
+//! arch/x86_64/interrupts/faults/general_protection_fault.rs
+//! General Protection Fault Exception Handler
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,12 +10,13 @@ use crate::types::panic_codes::PanicCode;
 use x86_64::structures::idt::InterruptStackFrame;
 
 pub extern "x86-interrupt" fn handler(
-    interrupt_stack_frame: InterruptStackFrame, _error_code: u64
-) -> ! {
-    kprint!("\n\nDouble Fault!\n");
+    interrupt_stack_frame: InterruptStackFrame, error_code: u64
+) {
+    kprint!("\n\nGeneral Protection Fault!\n");
+    kprint!("Error Code: {error_code}\n");
     kprint!("{interrupt_stack_frame:#?}\n");
     kernel_panic(
-        PanicCode::DoubleFault,
+        PanicCode::GeneralProtectionFault,
         "",
         true
     );

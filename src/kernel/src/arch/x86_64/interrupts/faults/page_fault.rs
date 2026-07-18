@@ -1,4 +1,4 @@
-//! arch/x86_64/exceptions/page_fault.rs
+//! arch/x86_64/interrupts/faults/page_fault.rs
 //! Page Fault Exception Handler
 //!
 //! Authors: MarioS271

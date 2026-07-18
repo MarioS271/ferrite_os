@@ -1,4 +1,4 @@
-//! arch/x86_64/gdt.rs
+//! arch/x86_64/tables/gdt.rs
 //! Global Descriptor Table Struct
 //!
 //! Authors: MarioS271

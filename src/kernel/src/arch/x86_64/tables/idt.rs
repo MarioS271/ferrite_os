@@ -1,4 +1,4 @@
-//! arch/x86_64/idt.rs
+//! arch/x86_64/tables/idt.rs
 //! Interrupt Descriptor Table Struct
 //!
 //! Authors: MarioS271
@@ -20,6 +20,12 @@ pub fn init() {
         }
         idt.general_protection_fault.set_handler_fn(super::exceptions::general_protection_fault::handler);
         idt.page_fault.set_handler_fn(super::exceptions::page_fault::handler);
+        use crate::arch::x86_64::interrupts;
+
+        // Faults
+        unsafe { idt.double_fault.set_handler_fn(interrupts::faults::double_fault::handler).set_stack_index(0); }
+        idt.general_protection_fault.set_handler_fn(interrupts::faults::general_protection_fault::handler);
+        idt.page_fault.set_handler_fn(interrupts::faults::page_fault::handler);
 
         idt
     });
