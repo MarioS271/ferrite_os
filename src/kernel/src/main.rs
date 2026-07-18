@@ -8,6 +8,8 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc;
+
 mod types;
 mod panic;
 mod arch;
@@ -16,8 +18,8 @@ mod screen;
 mod mem;
 
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
-use x86_64::structures::paging::PageTableFlags;
-use x86_64::VirtAddr;
+use alloc::vec::Vec;
+use alloc::boxed::Box;
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
@@ -52,23 +54,42 @@ extern "C" fn kmain() -> ! {
     // Init heap allocator
     mem::heap::init();
 
-
-    // temporary test code for vmm map_page/unmap_page
+    // temp test code for heap alloc
     unsafe {
-        let test_virt = VirtAddr::new(0xffff_8002_0000_0000);
-        let phys1 = mem::pmm::alloc().unwrap();
-        let phys2 = mem::pmm::alloc().unwrap();
+        // basic allocation
+        let mut vec = Vec::new();
+        vec.push(0xbeef_u64);
+        assert_eq!(vec[0], 0xbeef);
 
-        mem::vmm::map_page(test_virt, phys1, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-        let ptr = test_virt.as_mut_ptr::<u64>();
-        ptr.write_volatile(0xdeadbeef);
-        kprint!("[VMM TEST] map: wrote 0xdeadbeef, read {:#x}\n", ptr.read_volatile());
+        // multiple live allocs
+        let box1 = Box::new(0x0001_u64);
+        let box2 = Box::new(0x0002_u64);
+        let box3 = Box::new(0x0003_u64);
+        assert_eq!(*box1, 0x0001);
+        assert_eq!(*box2, 0x0002);
+        assert_eq!(*box3, 0x0003);
 
-        mem::vmm::unmap_page(test_virt);
+        // vec growth
+        let mut v: Vec<u64> = Vec::new();
+        for i in 0..64 {
+            v.push(i);
+        }
+        assert_eq!(v.len(), 64);
+        assert_eq!(v[63], 63);
 
-        mem::vmm::map_page(test_virt, phys2, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-        ptr.write_volatile(0xcafebabe);
-        kprint!("[VMM TEST] remap: wrote 0xcafebabe, read {:#x}\n", ptr.read_volatile());
+        // dealloc then realloc: drop box2, allocate again, heap must not corrupt
+        drop(box2);
+        let box4 = Box::new(0xdead_u64);
+        assert_eq!(*box4, 0xdead);
+
+        // nested: Vec<Box<u64>>
+        let mut nested: Vec<Box<u64>> = Vec::new();
+        for i in 0..8 {
+            nested.push(Box::new(i * 0x10));
+        }
+        for i in 0..8_u64 {
+            assert_eq!(*nested[i as usize], i * 0x10);
+        }
     }
 
 
