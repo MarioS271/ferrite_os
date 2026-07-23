@@ -24,6 +24,8 @@ import os
 import json
 import hashlib
 import tomllib
+import socket
+import time
 from pathlib import Path
 
 # ─── config ───────────────────────────────────────────────────────────────────
@@ -46,8 +48,10 @@ OVMF_CODE   = OVMF_DIR / "code.fd"
 OVMF_VARS   = OVMF_DIR / "vars.fd"
 
 # Other global vars
-CONTAINER_NAME = "ferrite_os"
+CONTAINER_NAME  = "ferrite_os"
 TCP_SERIAL_PORT = 4231
+HOST            = "localhost"
+RETRY_DELAY     = 1.0
 
 def load_config() -> dict:
     cfg_path = ROOT / "run" / "configs" / "build.toml"
@@ -260,7 +264,7 @@ def run_qemu():
         print("  ✗ No ISO found. Run build first.")
         sys.exit(1)
 
-    run([
+    cmd = [
         "qemu-system-x86_64",
         "-cdrom",     str(ISO),
         "-m",         "1G",
@@ -268,7 +272,42 @@ def run_qemu():
         "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
         "-drive",     f"if=pflash,format=raw,readonly=on,file={OVMF_CODE}",
         "-drive",     f"if=pflash,format=raw,file={OVMF_VARS}",
-    ])
+    ]
+    print(f"  >> {' '.join(str(c) for c in cmd)}")
+    qemu = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        stream_serial(qemu)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if qemu.poll() is None:
+            qemu.terminate()
+
+def stream_serial(qemu_proc):
+    print(f"  Waiting for serial on {HOST}:{TCP_SERIAL_PORT}...")
+    while True:
+        try:
+            sock = socket.create_connection((HOST, TCP_SERIAL_PORT), timeout=1)
+            sock.settimeout(None)
+            break
+        except (ConnectionRefusedError, TimeoutError, OSError):
+            if qemu_proc.poll() is not None:
+                print("  ✗ QEMU exited before serial port opened")
+                return
+            time.sleep(RETRY_DELAY)
+
+    banner(f"Serial Output  [{HOST}:{TCP_SERIAL_PORT}]")
+    try:
+        with sock:
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+                sys.stdout.buffer.write(data)
+                sys.stdout.buffer.flush()
+    except KeyboardInterrupt:
+        pass
+    print("\n  Serial connection closed")
 
 def clean():
     banner("Cleaning Build")
