@@ -7,6 +7,7 @@
 use spin::Mutex;
 use pic8259;
 
+pub const PIC_MASTER_CMD_PORT: u16 = 0x20;
 pub const PIC_MASTER_OFFSET: u8 = 0x20;
 pub const PIC_SLAVE_OFFSET: u8 = 0x28;
 
@@ -16,6 +17,7 @@ pub fn init() {
     let mut _lock = CHAINED_PICS.lock();
     unsafe {
         _lock.initialize();
+        _lock.write_masks(0xFE, 0xFF);
     }
 }
 

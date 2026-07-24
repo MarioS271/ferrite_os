@@ -6,3 +6,4 @@
 //! This module contains handlers for all IRQS (interrupt requests)
 
 pub(crate) mod irq0_timer;
+pub(crate) mod irq7;

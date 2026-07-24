@@ -18,8 +18,7 @@ mod screen;
 mod mem;
 
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
-use alloc::vec::Vec;
-use alloc::boxed::Box;
+use crate::arch::instructions;
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
@@ -53,6 +52,8 @@ extern "C" fn kmain() -> ! {
 
     // Init heap allocator
     mem::heap::init();
+
+    instructions::enable_interrupts();
 
 
     kprint!("Kernel ran successfully!");

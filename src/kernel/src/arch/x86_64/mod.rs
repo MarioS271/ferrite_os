@@ -15,6 +15,4 @@ pub(crate) fn init() {
     tables::gdt::init();
     tables::idt::init();
     interrupts::pic::init();
-
-    instructions::enable_interrupts();
 }
