@@ -6,3 +6,4 @@
 //! This module contains data structures such as the framebuffer struct
 
 pub(crate) mod panic_codes;
+pub(crate) mod aligned_stack;
