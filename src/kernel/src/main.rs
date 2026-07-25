@@ -16,6 +16,7 @@ mod arch;
 mod logging;
 mod screen;
 mod mem;
+mod lib;
 
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 use crate::arch::instructions;
@@ -55,6 +56,8 @@ extern "C" fn kmain() -> ! {
 
     instructions::enable_interrupts();
 
+    // deliberate 
+    unsafe { core::arch::asm!("mov al, byte ptr [0]", out("al") _, options(nostack, readonly)); }
 
     kprint!("Kernel ran successfully!");
 

@@ -4,7 +4,7 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-use spin::Mutex;
+use crate::types::irq_mutex::IrqMutex;
 use crate::screen::basic::framebuffer::BasicFramebufferData;
 
 /// Directly uses the given x and y as cursor (changes them)
@@ -37,7 +37,7 @@ struct VgaPrintState {
     x: usize,
     y: usize,
 }
-static VGA_PRINT_STATE: Mutex<VgaPrintState> = Mutex::new(VgaPrintState{x: 0, y: 0});
+static VGA_PRINT_STATE: IrqMutex<VgaPrintState> = IrqMutex::new(VgaPrintState{x: 0, y: 0});
 
 pub fn print_to_basic_fb(string: &str) {
     use super::font::TERMINUS_POWERLINE_16_HEADER;

@@ -38,7 +38,7 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str, print_debug_text
     }
 }
 
-/// Rust's internal panic handler, only used when rust runtime faults occur
+/// Rust's internal panic handler, only used when rust runtime exceptions occur
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     arch::instructions::disable_interrupts();

@@ -7,3 +7,4 @@
 
 pub(crate) mod panic_codes;
 pub(crate) mod aligned_stack;
+pub(crate) mod irq_mutex;

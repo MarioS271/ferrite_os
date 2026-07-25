@@ -4,14 +4,14 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-use spin::Mutex;
 use pic8259;
+use crate::types::irq_mutex::IrqMutex;
 
 pub const PIC_MASTER_CMD_PORT: u16 = 0x20;
 pub const PIC_MASTER_OFFSET: u8 = 0x20;
 pub const PIC_SLAVE_OFFSET: u8 = 0x28;
 
-static CHAINED_PICS: Mutex<pic8259::ChainedPics> = Mutex::new(unsafe { pic8259::ChainedPics::new(PIC_MASTER_OFFSET, PIC_SLAVE_OFFSET) });
+static CHAINED_PICS: IrqMutex<pic8259::ChainedPics> = IrqMutex::new(unsafe { pic8259::ChainedPics::new(PIC_MASTER_OFFSET, PIC_SLAVE_OFFSET) });
 
 pub fn init() {
     let mut _lock = CHAINED_PICS.lock();
