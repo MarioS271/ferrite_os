@@ -1,6 +1,6 @@
 """
 File:
-    build-win.py
+    build.py
 
 Authors:
     MarioS271
@@ -11,16 +11,17 @@ Copyright:
 Description:
     Build script for ferrite_os — Rust x86-64 bare metal OS.
     Compilation + ISO creation runs inside Docker.
-    QEMU runs natively.
+    QEMU runs natively on the host (Windows, Linux, macOS).
 
 Usage:
-    python build-win.py [config | build | run | all | clean]
+    python build.py [build | run | all | clean]
 """
 
 import subprocess
 import shutil
 import sys
 import os
+import stat
 import json
 import hashlib
 import tomllib
@@ -37,15 +38,16 @@ ISO   = BUILD / "ferrite_os.iso"
 CACHE = BUILD / ".build_cache.json"
 
 # Path to the kernel ELF *inside the container*
+# (target/ lives in a docker volume — it is not visible on the host)
 KERNEL_ELF_CONTAINER = "/ferrite_os/target/x86_64-unknown-none/debug/kernel"
-
-# Path to the kernel ELF on the host (via volume mount)
-KERNEL_ELF_HOST = ROOT / "target" / "x86_64-unknown-none" / "debug" / "kernel"
 
 # Path to the OVMF dependencies
 OVMF_DIR    = ROOT / "run" / "dependencies" / "ovmf"
 OVMF_CODE   = OVMF_DIR / "code.fd"
 OVMF_VARS   = OVMF_DIR / "vars.fd"
+
+# Directories never scanned for source changes
+IGNORED_DIRS = {"build", "target", ".git", ".venv", "node_modules"}
 
 # Other global vars
 CONTAINER_NAME  = "ferrite_os"
@@ -54,31 +56,35 @@ HOST            = "localhost"
 RETRY_DELAY     = 1.0
 
 def load_config() -> dict:
+    """
+    Load build.toml if present.
+
+    Only [extra_paths] is read, which exists so Windows can find qemu/docker
+    without a global PATH entry. Elsewhere it is optional, so a missing file
+    is not an error.
+    """
     cfg_path = ROOT / "run" / "configs" / "build.toml"
     if not cfg_path.exists():
-        print(f"  ✗ build.toml not found at {cfg_path}")
-        print( "  Create one — example:")
-        print( "")
-        print( "    [extra_paths]")
-        print( "    paths = [")
-        print( "        \"C:/Program Files/qemu\",")
-        print( "        \"C:/Program Files/Docker/Docker/resources/bin\",")
-        print( "    ]")
-        sys.exit(1)
-    with open(cfg_path, "rb") as f:
-        return tomllib.load(f)
+        return {}
+    try:
+        with open(cfg_path, "rb") as f:
+            return tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        print(f"  ! Ignoring malformed {cfg_path}: {e}")
+        return {}
 
 _CFG        = load_config()
 EXTRA_PATHS = _CFG.get("extra_paths", {}).get("paths", [])
 
-TRACKED_SOURCES = (
-        list(ROOT.rglob("*.rs"))      +
-        list(ROOT.rglob("Cargo.toml"))+
-        list(ROOT.rglob("*.ld"))      +
-        list(ROOT.rglob("*.conf"))    +
-        list(ROOT.rglob("*.cfg"))     +
-        list(ROOT.rglob("config.toml"))
-)
+def tracked_sources() -> list:
+    """Source files whose contents decide whether a rebuild is needed."""
+    patterns = ("*.rs", "Cargo.toml", "*.ld", "*.conf", "*.cfg", "config.toml")
+    found = set()
+    for pattern in patterns:
+        for f in ROOT.rglob(pattern):
+            if IGNORED_DIRS.isdisjoint(f.relative_to(ROOT).parts):
+                found.add(f)
+    return sorted(found)
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,7 +95,22 @@ def patch_path():
     current = os.environ.get("PATH", "")
     for p in EXTRA_PATHS:
         if p not in current and os.path.exists(p):
-            os.environ["PATH"] = p + ";" + current
+            os.environ["PATH"] = p + os.pathsep + current
+
+def rmtree(path: Path):
+    """shutil.rmtree that survives read-only files (cargo does this on Windows)."""
+    def handler(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=handler)
+    else:
+        shutil.rmtree(path, onerror=handler)
+
+def qemu_file(path: Path) -> str:
+    """QEMU splits -drive options on commas, so commas in paths must be doubled."""
+    return str(path).replace(",", ",,")
 
 def run(cmd: list, **kwargs):
     """Run a command, print it, die on failure."""
@@ -111,6 +132,14 @@ def check_dependencies():
         print("  Missing tools (not in PATH):")
         for m in missing:
             print(f"  ✗ {m}")
+        print("\n  On Windows you can list the install dirs in")
+        print("  run/configs/build.toml instead of the global PATH:")
+        print("")
+        print("    [extra_paths]")
+        print("    paths = [")
+        print("        \"C:/Program Files/qemu\",")
+        print("        \"C:/Program Files/Docker/Docker/resources/bin\",")
+        print("    ]")
         sys.exit(1)
     for d in deps:
         print(f"  ✓ {d}")
@@ -146,7 +175,7 @@ def list_config_vars():
 # ─── cache ────────────────────────────────────────────────────────────────────
 
 def hash_file(path: Path) -> str:
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)
     try:
         h.update(path.read_bytes())
     except FileNotFoundError:
@@ -160,11 +189,12 @@ def load_cache() -> dict:
         return {}
 
 def save_cache(data: dict):
-    BUILD.mkdir(exist_ok=True)
+    BUILD.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(data, indent=2))
 
 def build_hash() -> dict:
-    return {str(f): hash_file(f) for f in TRACKED_SOURCES if f.exists()}
+    # Keys are repo-relative posix paths so the cache is not machine-specific
+    return {f.relative_to(ROOT).as_posix(): hash_file(f) for f in tracked_sources()}
 
 def needs_rebuild() -> bool:
     if not ISO.exists():
@@ -176,27 +206,28 @@ def needs_rebuild() -> bool:
     if changed:
         print("  Changed files:")
         for f in changed:
-            try:
-                print(f"    ~ {Path(f).relative_to(ROOT)}")
-            except ValueError:
-                print(f"    ~ {f}")
+            print(f"    ~ {f}")
         return True
     print("  ✓ Nothing changed — skipping build")
     return False
 
 # ─── container lifecycle ──────────────────────────────────────────────────────
 
-def ensure_container_running():
-    """Start the container if it isn't already running."""
+def container_running() -> bool:
     result = subprocess.run(
         ["docker", "inspect", "-f", "{{.State.Running}}", CONTAINER_NAME],
         capture_output=True, text=True
     )
-    if result.returncode != 0 or result.stdout.strip() != "true":
-        print(f"  Container '{CONTAINER_NAME}' not running — starting...")
-        run(["docker", "compose", "up", "-d", "--build"])
-    else:
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+def ensure_container_running():
+    """Start the container if it isn't already running."""
+    if container_running():
         print(f"  ✓ Container '{CONTAINER_NAME}' is running")
+        return
+    print(f"  Container '{CONTAINER_NAME}' not running — starting...")
+    # cwd=ROOT so the compose file is found regardless of where this was invoked
+    run(["docker", "compose", "up", "-d", "--build"], cwd=ROOT)
 
 # ─── build steps ──────────────────────────────────────────────────────────────
 
@@ -226,7 +257,7 @@ def do_build():
         f"cp {KERNEL_ELF_CONTAINER} /ferrite_os/build/iso/kernel"
     )
 
-    # 4. Copy Limine config (strip Windows CRLF so Limine can parse it)
+    # 4. Copy Limine config (strip CRLF so Limine can parse it)
     run_in_container(
         "sed 's/\\r//' /ferrite_os/run/configs/limine.conf "
         "> /ferrite_os/build/iso/boot/limine/limine.conf"
@@ -270,8 +301,8 @@ def run_qemu():
         "-m",         "1G",
         "-vga",       "std",
         "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
-        "-drive",     f"if=pflash,format=raw,readonly=on,file={OVMF_CODE}",
-        "-drive",     f"if=pflash,format=raw,file={OVMF_VARS}",
+        "-drive",     f"if=pflash,format=raw,readonly=on,file={qemu_file(OVMF_CODE)}",
+        "-drive",     f"if=pflash,format=raw,file={qemu_file(OVMF_VARS)}",
     ]
     print(f"  >> {' '.join(str(c) for c in cmd)}")
     qemu = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -282,6 +313,10 @@ def run_qemu():
     finally:
         if qemu.poll() is None:
             qemu.terminate()
+            try:
+                qemu.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                qemu.kill()
 
 def stream_serial(qemu_proc):
     print(f"  Waiting for serial on {HOST}:{TCP_SERIAL_PORT}...")
@@ -305,21 +340,28 @@ def stream_serial(qemu_proc):
                     break
                 sys.stdout.buffer.write(data)
                 sys.stdout.buffer.flush()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ConnectionResetError):
         pass
     print("\n  Serial connection closed")
 
 def clean():
     banner("Cleaning Build")
-    removed = []
+    removed = False
+
+    # target/ is a docker volume, so it has to be cleaned inside the container
+    if container_running():
+        run_in_container("cd /ferrite_os && cargo clean")
+        removed = True
+    else:
+        print(f"  Container '{CONTAINER_NAME}' not running — skipping cargo clean")
+
     for d in [BUILD, ROOT / "target"]:
         if d.exists():
-            shutil.rmtree(d)
-            removed.append(d)
-    if removed:
-        for d in removed:
+            rmtree(d)
             print(f"  ✓ Deleted {d}")
-    else:
+            removed = True
+
+    if not removed:
         print("  Nothing to clean")
 
 # ─── commands ─────────────────────────────────────────────────────────────────
@@ -355,12 +397,12 @@ def main():
     list_config_vars()
 
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        print(f"\n  Usage: python build-win.py [{' | '.join(COMMANDS)}]")
+        print(f"\n  Usage: python build.py [{' | '.join(COMMANDS)}]")
         print( "  Commands:")
         print( "    build  — compile kernel + create ISO in Docker (skips if unchanged)")
-        print( "    run    — launch QEMU with the ISO (Windows-native)")
+        print( "    run    — launch QEMU with the ISO (host-native)")
         print( "    all    — build + run")
-        print( "    clean  — delete build/ and target/")
+        print( "    clean  — cargo clean in the container + delete build/")
         sys.exit(1)
 
     COMMANDS[sys.argv[1]]()
