@@ -1,8 +1,15 @@
+# Editor Configs
 .idea
+.vscode
+
+# AI Editors
 .claude
 .antigravitycli
-/target
-/build
-/run/dependencies/ovmf/*
 CLAUDE.md
 AGENTS.md
+
+# Artifacts
+/build
+/docs
+/target
+/run/dependencies/ovmf/*
