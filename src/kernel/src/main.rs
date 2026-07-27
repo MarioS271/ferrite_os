@@ -16,7 +16,6 @@ mod arch;
 mod logging;
 mod screen;
 mod mem;
-mod lib;
 
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 use crate::arch::instructions;

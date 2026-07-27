@@ -9,7 +9,7 @@
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;
-use crate::lib::fmt_buffer::FmtBuffer;
+use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 

@@ -9,7 +9,7 @@ use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
 use x86_64::registers::control::Cr2;
-use crate::lib::fmt_buffer::FmtBuffer;
+use crate::types::fmt_buffer::FmtBuffer;
 
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame,
