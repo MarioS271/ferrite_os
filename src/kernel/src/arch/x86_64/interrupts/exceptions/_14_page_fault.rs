@@ -21,6 +21,5 @@ pub extern "x86-interrupt" fn handler(
     kernel_panic(
         PanicCode::PageFault,
         fmt_buffer.as_str(),
-        true
     );
 }

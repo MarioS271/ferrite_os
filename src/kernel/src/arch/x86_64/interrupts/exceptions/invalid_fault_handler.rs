@@ -22,6 +22,5 @@ pub extern "x86-interrupt" fn handler<const vec: usize>(
     kernel_panic(
         PanicCode::IllegalInterrupt,
         fmt_buffer.as_str(),
-        true
     );
 }

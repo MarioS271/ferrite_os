@@ -34,7 +34,6 @@ fn parse_psf2_header(psf2_font: &[u8]) -> Psf2Header {
         kernel_panic(
             PanicCode::InvalidPsf2MagicNumber,
             "Invalid PSF2 Magic Number",
-            false
         );
     }
 

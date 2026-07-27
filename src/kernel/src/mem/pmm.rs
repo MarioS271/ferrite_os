@@ -66,7 +66,6 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
         kernel_panic(
             PanicCode::NoValidMemMapEntry,
             "Could not find a usable memmap entry to place PMM bitmap in",
-            true
         );
     }
 
@@ -127,7 +126,6 @@ pub fn alloc() -> Option<PhysAddr> {
         kernel_panic(
             PanicCode::PmmNotInitialized,
             "Cannot pmm::alloc(), PMM is not initialized",
-            true
         );
     }
 
@@ -162,7 +160,6 @@ pub fn free(addr: PhysAddr) {
         kernel_panic(
             PanicCode::PmmNotInitialized,
             "Cannot pmm::free(), PMM is not initialized",
-            true
         );
     }
 
@@ -173,7 +170,6 @@ pub fn free(addr: PhysAddr) {
         kernel_panic(
             PanicCode::IllegalFree,
             "Attempting to pmm::free() frame 0",
-            true
         );
     }
 
@@ -181,7 +177,6 @@ pub fn free(addr: PhysAddr) {
         kernel_panic(
             PanicCode::IllegalFree,
             "Attempting to pmm::free() in the range of the pmm bitmap",
-            true
         );
     }
 
@@ -189,7 +184,6 @@ pub fn free(addr: PhysAddr) {
         kernel_panic(
             PanicCode::IllegalFree,
             "Attempting to pmm::free() outside of usable memory",
-            true
         );
     }
 
@@ -204,7 +198,6 @@ pub fn free(addr: PhysAddr) {
             kernel_panic(
                 PanicCode::DoubleFree,
                 "Attempting to pmm::free() a frame which is already freed",
-                true
             );
         }
 

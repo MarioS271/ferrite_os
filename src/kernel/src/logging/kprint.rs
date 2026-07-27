@@ -4,8 +4,13 @@
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
+use crate::SIMPLE_STATE;
+
 fn kprint(string: &str) {
-    super::serial::write_to_serial(string);
+    if SIMPLE_STATE.serial.is_completed() {
+        use crate::logging::_serial::_Serial;
+        SIMPLE_STATE.serial.get().unwrap().write(string);
+    }
     crate::screen::basic::text::print_to_basic_fb(string);
 }
 

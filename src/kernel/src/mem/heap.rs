@@ -25,7 +25,6 @@ pub fn init() {
                     || kernel_panic(
                         PanicCode::OutOfMemory,
                         "Out of memory for heap",
-                        true
                     )
                 );
                 vmm::map_page(

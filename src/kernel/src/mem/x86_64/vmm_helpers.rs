@@ -12,7 +12,6 @@ pub fn invalid_unmap_panic() -> ! {
     kernel_panic(
         PanicCode::InvalidPageOperation,
         "Attempting to unmap a page without a PRESENT flag",
-        true
     );
 }
 
@@ -20,7 +19,6 @@ pub fn out_of_memory_panic() -> ! {
     kernel_panic(
         PanicCode::OutOfMemory,
         "VMM could not allocate a frame, out of memory",
-        true
     )
 }
 

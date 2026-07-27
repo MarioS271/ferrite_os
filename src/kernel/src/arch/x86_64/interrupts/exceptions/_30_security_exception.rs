@@ -18,6 +18,5 @@ pub extern "x86-interrupt" fn handler(
     kernel_panic(
         PanicCode::SecurityException,
         fmt_buffer.as_str(),
-        true
     );
 }

@@ -17,17 +17,43 @@ mod logging;
 mod screen;
 mod mem;
 
+use spin::Once;
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 use crate::arch::instructions;
+use crate::panic::kernel_panic;
+use crate::types::panic_codes::PanicCode;
+
+struct SimpleKernelState {
+    serial: Once<logging::serial::Serial>,
+    basic_fb: Once<screen::basic::framebuffer::BasicFramebufferData>
+}
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
+pub static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
+    serial: Once::new(),
+    basic_fb: Once::new(),
+};
+
 #[no_mangle]
 extern "C" fn kmain() -> ! {
-    // Init logging
-    logging::serial::init_serial();
+    {
+        use logging::serial::Serial;
+        use logging::_serial::{SerialPort, _Serial};
+
+        SIMPLE_STATE.serial.call_once(|| -> Serial {
+            Serial::new(SerialPort::Serial1)
+        });
+        let res = SIMPLE_STATE.serial.get().unwrap().init();
+        if !res.is_ok() {
+            kernel_panic(
+                PanicCode::InitFailure,
+                "Failed to initialize serial for kernel logging"
+            );
+        }
+    }
 
     if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
         if let Some(fb) = fb_response.framebuffers().first() {
@@ -54,6 +80,8 @@ extern "C" fn kmain() -> ! {
     mem::heap::init();
 
     instructions::enable_interrupts();
+
+    panic!("test");
 
     // deliberate 
     unsafe { core::arch::asm!("mov al, byte ptr [0]", out("al") _, options(nostack, readonly)); }

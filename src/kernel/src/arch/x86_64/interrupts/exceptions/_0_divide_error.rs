@@ -18,6 +18,5 @@ pub extern "x86-interrupt" fn handler(
     kernel_panic(
         PanicCode::DivideError,
         fmt_buffer.as_str(),
-        true
     );
 }

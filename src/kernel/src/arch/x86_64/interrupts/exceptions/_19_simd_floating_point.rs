@@ -18,6 +18,5 @@ pub extern "x86-interrupt" fn handler(
     kernel_panic(
         PanicCode::SimdFloatingPoint,
         fmt_buffer.as_str(),
-        true
     );
 }

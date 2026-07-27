@@ -9,6 +9,7 @@ pub enum PanicCode {
     // General
     Unknown = 0x0000,
     ManuallyTriggeredPanic = 0x0001,
+    InitFailure = 0x0002,
 
     // Exceptions
     IllegalInterrupt = 0x0099,
@@ -50,6 +51,7 @@ impl PanicCode {
             // General
             PanicCode::Unknown => "Unknown",
             PanicCode::ManuallyTriggeredPanic => "ManuallyTriggeredPanic",
+            PanicCode::InitFailure => "InitFailure",
 
             // Exceptions
             PanicCode::IllegalInterrupt => "IllegalInterrupt",
