@@ -63,9 +63,9 @@ pub fn print_to_basic_fb(string: &str) {
             // memory range. Source and destination are computed from the framebuffer bounds,
             // meaning they will not go out of bounds.
             unsafe {
-                let src = fb.fb_pointer.add(font_header.height as usize * fb.pixel_stride as usize);
+                let src = fb.fb_pointer.add(font_header.height as usize * fb.bytes_per_row as usize);
                 let dst = fb.fb_pointer;
-                let count = (fb.height as usize - font_header.height as usize) * fb.pixel_stride as usize;
+                let count = (fb.height as usize - font_header.height as usize) * fb.bytes_per_row as usize;
 
                 core::ptr::copy(src, dst, count);
             }
@@ -73,8 +73,8 @@ pub fn print_to_basic_fb(string: &str) {
             // This is safe because we are iterating inside the framebuffer memory again,
             // with the bounds of the iteration computed from framebuffer bounds.
             unsafe {
-                let start = (fb.height as usize - font_header.height as usize) * fb.pixel_stride as usize;
-                let end = fb.height as usize * fb.pixel_stride as usize;
+                let start = (fb.height as usize - font_header.height as usize) * fb.bytes_per_row as usize;
+                let end = fb.height as usize * fb.bytes_per_row as usize;
 
                 for i in start..end {
                     fb.fb_pointer.add(i).write_volatile(0u32);

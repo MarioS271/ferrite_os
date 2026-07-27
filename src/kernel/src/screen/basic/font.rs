@@ -90,7 +90,7 @@ pub fn draw_char(fb: &BasicFramebufferData, c: char, x: usize, y: usize, font_co
             } else {
                 BACKGROUND_COLOR
             };
-            let pixel_pos = (y + row) * fb.pixel_stride as usize + (x + col);
+            let pixel_pos = (y + row) * fb.bytes_per_row as usize + (x + col);
 
             // This is safe because the above if statement would've returned if we were
             // in invalid memory
