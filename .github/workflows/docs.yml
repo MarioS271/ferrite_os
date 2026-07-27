@@ -1,0 +1,59 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN permissions required to deploy to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; cancel superseded in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          targets: x86_64-unknown-none
+          components: rust-src
+
+      # Caches ~/.cargo/registry, ~/.cargo/git, and ./target.
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      # Target + build-std come from .cargo/config.toml, so plain `cargo doc`
+      # documents the kernel for x86_64-unknown-none. --enable-index-page emits
+      # a top-level index.html that redirects into the crate's docs.
+      - name: Build docs
+        run: cargo doc --no-deps --manifest-path src/kernel/Cargo.toml
+        env:
+          RUSTDOCFLAGS: -Z unstable-options --enable-index-page
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/x86_64-unknown-none/doc
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
