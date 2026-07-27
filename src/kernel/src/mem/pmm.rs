@@ -143,7 +143,7 @@ pub fn alloc() -> Option<PhysAddr> {
             }
 
             let bit_position = u8::trailing_ones(byte);
-            *pmm.bitmap_ptr.add(byte_index as usize) |= (1 << bit_position);
+            *pmm.bitmap_ptr.add(byte_index as usize) |= 1 << bit_position;
 
             let frame_index = byte_index * 8 + bit_position as u64;
             let frame_address = frame_index * FRAME_SIZE;

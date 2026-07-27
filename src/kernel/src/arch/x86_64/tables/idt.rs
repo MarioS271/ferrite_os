@@ -7,7 +7,6 @@
 use crate::kprint;
 use spin::Once;
 use x86_64::structures::idt::InterruptDescriptorTable;
-use crate::arch::x86_64::interrupts::exceptions;
 
 const DOUBLE_FAULT_IST_STACK_INDEX: u16 = 0;
 const DEBUG_IST_STACK_INDEX: u16 = 1;
