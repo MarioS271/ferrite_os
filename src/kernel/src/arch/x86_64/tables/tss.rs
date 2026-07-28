@@ -22,16 +22,16 @@ pub static TASK_STATE_SEGMENT: Once<TaskStateSegment> = Once::new();
 
 /// 8 KiB stack for IST slot 0 (double-fault handler).
 /// `static mut` because `VirtAddr::from_ptr` needs a raw pointer to its top.
-static mut IST1_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+static IST1_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
 /// 8 KiB stack for IST slot 1 (debug handler).
-static mut IST2_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+static IST2_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
 /// 8 KiB stack for IST slot 2 (NMI handler).
-static mut IST3_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+static IST3_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
 /// 8 KiB stack for IST slot 3 (machine-check handler).
-static mut IST4_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+static IST4_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
 /// Allocate IST stacks and initialize the TSS.
 ///

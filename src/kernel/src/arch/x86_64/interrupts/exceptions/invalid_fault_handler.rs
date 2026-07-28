@@ -16,15 +16,15 @@ use crate::types::panic_codes::PanicCode;
 
 /// Panic with the vector number and interrupt stack frame.
 ///
-/// The `vec` const generic carries the IDT vector index so the panic message can
+/// The `VEC` const generic carries the IDT vector index so the panic message can
 /// identify which impossible interrupt fired. The ISF is included to aid diagnosis.
-pub extern "x86-interrupt" fn handler<const vec: usize>(
+pub extern "x86-interrupt" fn handler<const VEC: usize>(
     isf: InterruptStackFrame
 ) {
     let mut fmt_buffer = FmtBuffer::<512>::new();
     let _ = write!(
         &mut fmt_buffer,
-        "WARNING: Vector #{vec} fired which should be\nimpossible (reserved exception?), this suggests possible IDT corruption or similar\n\n{:#?}\n",
+        "WARNING: Vector #{VEC} fired which should be\nimpossible (reserved exception?), this suggests possible IDT corruption or similar\n\n{:#?}\n",
         isf
     );
     kernel_panic(
