@@ -1,0 +1,17 @@
+# Force LF line endings for all text files, on every platform.
+* text=auto eol=lf
+
+# Binary files: never touch line endings.
+*.psf   binary
+*.fd    binary
+*.bin   binary
+*.img   binary
+*.iso   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.o     binary
+*.a     binary
+*.elf   binary
