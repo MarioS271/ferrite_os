@@ -24,6 +24,18 @@ The first block is just the file path and license header. The second block is a 
 
 **Module-level (`//!`) — implementation files (e.g. `vmm.rs`, `kprint.rs`)**
 
+Example:
+
+```
+//! path/to/mod.rs
+//! One-line description of what the code in here does.
+//!
+//! Further, more precise docs go here.
+//!
+//! Authors: MarioS271
+//! SPDX-License-Identifier: GPL-3.0-only
+```
+
 Implementation files get a full module doc:
 - State what the module owns and what it does in the kernel
 - Name exact types involved (`PageTable`, `IrqMutex<T>`, etc.)
