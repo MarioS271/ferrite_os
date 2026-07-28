@@ -14,7 +14,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::kprint;
+use crate::{kdebug, kemerg, kinfo};
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use spin::Once;
@@ -69,8 +69,8 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     let total_frames = max_entry / FRAME_SIZE;
     let bitmap_bytes = total_frames.div_ceil(8);
 
-    kprint!("[PMM] total_frames={total_frames}\n");
-    kprint!("[PMM] bitmap_bytes={bitmap_bytes}\n");
+    kdebug!("[PMM] total_frames={total_frames}");
+    kdebug!("[PMM] bitmap_bytes={bitmap_bytes}");
 
     let mut _bitmap_physical_base_addr: Option<u64> = None;
     let mut _bitmap_base_addr: Option<*mut u8> = None;
@@ -99,8 +99,8 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     let bitmap_physical_base_addr = _bitmap_physical_base_addr.unwrap();
     let bitmap_base_addr = _bitmap_base_addr.unwrap();
 
-    kprint!("[PMM] bitmap_physical_base_addr={bitmap_physical_base_addr}\n");
-    kprint!("[PMM] bitmap_base_addr={bitmap_base_addr:p}\n");
+    kdebug!("[PMM] bitmap_physical_base_addr={bitmap_physical_base_addr}");
+    kdebug!("[PMM] bitmap_base_addr={bitmap_base_addr:p}");
 
     // This is safe because we're writing over our bitmap which was determined from safe
     // limine-provided values.
@@ -113,8 +113,8 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     // Subtracting one so that the value is the last used frame, not the one after
     let bitmap_end_frame = ((bitmap_physical_base_addr + bitmap_bytes).div_ceil(FRAME_SIZE)) - 1;
 
-    kprint!("[PMM] bitmap_start_frame={bitmap_start_frame}\n");
-    kprint!("[PMM] bitmap_end_frame={bitmap_end_frame}\n");
+    kdebug!("[PMM] bitmap_start_frame={bitmap_start_frame}");
+    kdebug!("[PMM] bitmap_end_frame={bitmap_end_frame}");
 
     for entry in entries {
         if entry.type_ != MEMMAP_USABLE {
@@ -146,6 +146,8 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
         bitmap_start_frame: bitmap_start_frame,
         bitmap_end_frame: bitmap_end_frame,
     });
+
+    kinfo!("Initialized PMM");
 }
 
 /// Allocate one free physical frame and return its address, or `None` if out of memory.
@@ -181,7 +183,7 @@ pub fn alloc() -> Option<PhysAddr> {
         }
     }
 
-    kprint!("[PMM] unable to alloc() a frame, out of memory");
+    kemerg!("[PMM] unable to alloc() a frame, out of memory");
 
     None
 }

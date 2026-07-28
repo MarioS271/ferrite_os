@@ -107,7 +107,8 @@ extern "C" fn kmain() -> ! {
         }
     }
 
-    kprint!("Hello, FerriteOS!\n");
+    kinfo!("Hello, FerriteOS!");
+    kdebug!("Debug logging is active!");
 
 
     // Init arch-specific features (GDT, IDT for x86_64, ...)
@@ -127,7 +128,7 @@ extern "C" fn kmain() -> ! {
     instructions::enable_interrupts();
 
 
-    kprint!("Kernel ran successfully!\n");
+    kinfo!("Kernel ran successfully!");
 
     // To halt the kernel on finish (temporary)
     loop {

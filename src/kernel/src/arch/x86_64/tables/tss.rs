@@ -9,7 +9,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::kprint;
+use crate::kinfo;
 use crate::types::aligned_stack::AlignedStack;
 use spin::Once;
 use x86_64::structures::tss::TaskStateSegment;
@@ -69,7 +69,7 @@ impl Tss {
             });
         }
 
-        kprint!("Initialized TSS\n");
+        kinfo!("Initialized TSS");
     }
 
     /// Return a reference to the initialized `TaskStateSegment`.

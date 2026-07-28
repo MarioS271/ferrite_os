@@ -16,7 +16,7 @@
 //! Authors: MarioS271
 
 use super::vmm_helpers::*;
-use crate::kprint;
+use crate::{kdebug, kinfo};
 use crate::mem::pmm;
 use spin::Once;
 use x86_64::registers::control::Cr3;
@@ -74,12 +74,14 @@ pub fn init(hhdm_offset: u64) {
         Cr3::write(phys_frame, current_cr3_flags);
     }
 
-    kprint!("[VMM] allocated frame for plm4 at phys addr {phys_addr_u64:#x}\n");
+    kdebug!("[VMM] allocated frame for plm4 at phys addr {phys_addr_u64:#x}");
 
     VMM_DATA.call_once(|| VmmData{
         plm4_ptr,
         hhdm_offset,
     });
+
+    kinfo!("Initialized VMM");
 }
 
 /// Return a reference to the global [`VmmData`].

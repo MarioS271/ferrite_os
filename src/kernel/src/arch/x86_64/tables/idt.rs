@@ -15,7 +15,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::kprint;
+use crate::kinfo;
 use spin::Once;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
@@ -73,6 +73,6 @@ impl Idt {
 
         self.table.get().unwrap().load();
 
-        kprint!("Initialized IDT\n");
+        kinfo!("Initialized IDT");
     }
 }

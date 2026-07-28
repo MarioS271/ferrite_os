@@ -45,7 +45,7 @@ fn write_log_buf(state: &mut KernelPrintState, s: &str) {
 }
 
 /// Write `string` to the ring buffer, serial port, and framebuffer (if each is initialized).
-fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str) {
+fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, color: Option<u32>) {
     use crate::SIMPLE_STATE;
 
     write_log_buf(state, string);
@@ -63,7 +63,7 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str) {
         let font = basic_fb_psf2_font.get().unwrap();
 
         let s = &mut **state;
-        font.draw_string(fb, string, &mut s.cursor_x, &mut s.cursor_y, None);
+        font.draw_string(fb, string, &mut s.cursor_x, &mut s.cursor_y, color);
 
         let last_row = fb.height as usize - font.glyph_height();
         if s.cursor_y > last_row {
@@ -116,10 +116,14 @@ impl KernelWriter {
     pub fn lock() -> Self {
         Self { lock: KPRINT_STATE.lock() }
     }
+
+    pub fn print_raw(&mut self, string: &str, color: Option<u32>) {
+        kprint(&mut self.lock, string, color);
+    }
 }
 impl core::fmt::Write for KernelWriter {
     fn write_str(&mut self, string: &str) -> core::fmt::Result {
-        kprint(&mut self.lock, string);
+        kprint(&mut self.lock, string, None);
         Ok(())
     }
 }
@@ -129,18 +133,110 @@ impl core::fmt::Write for KernelWriter {
 /// Accepts the same format string syntax as `std::print!`. Output goes to the
 /// in-memory log ring buffer, the serial port (if initialized), and the framebuffer
 /// (if initialized, with automatic scrolling). Safe to call from interrupt handlers.
-///
-/// # Examples
-/// ```ignore
-/// kprint!("Hello, {}!\n", "FerriteOS");
-/// kprint!("[PMM] total_frames={}\n", count);
-/// ```
 #[macro_export]
 macro_rules! kprint {
-    ($($arg:tt)*) => ({
-        let _ = core::fmt::write(
-            &mut $crate::logging::kprint::KernelWriter::lock(),
-            format_args!($($arg)*)
-        );
-    });
+    ($($arg:tt)*) => {
+        {
+            let _ = core::fmt::write(
+                &mut $crate::logging::kprint::KernelWriter::lock(),
+                format_args!($($arg)*)
+            );
+        }
+    };
+}
+
+pub enum LogLevelColor {
+    Emergency = 0x00ff00aa,
+    Alert = 0x00ffaa00,
+    Critical = 0x008a00ff,
+    Error = 0x00ff0000,
+    Warn = 0x00ffff00,
+    Info = 0x0000ff00,
+    Debug = 0x000000ff,
+}
+
+#[macro_export]
+macro_rules! kemerg {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("! ", Some(LogLevelColor::Emergency as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kalert {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("A ", Some(LogLevelColor::Alert as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kcrit {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("C ", Some(LogLevelColor::Critical as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kerror {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("E ", Some(LogLevelColor::Error as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kwarn {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("W ", Some(LogLevelColor::Warn as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kinfo {
+    ($($arg:tt)*) => {
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("I ", Some(LogLevelColor::Info as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
+}
+#[macro_export]
+macro_rules! kdebug {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "debug-logging")]
+        {
+            use $crate::logging::kprint::{KernelWriter, LogLevelColor};
+            let mut w = KernelWriter::lock();
+            w.print_raw("D ", Some(LogLevelColor::Debug as u32));
+            let _ = core::fmt::write(&mut w, format_args!($($arg)*));
+            w.print_raw("\n", None);
+        }
+    };
 }

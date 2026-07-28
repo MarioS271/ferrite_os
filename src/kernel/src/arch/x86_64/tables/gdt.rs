@@ -8,7 +8,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::kprint;
+use crate::kinfo;
 use spin::Once;
 use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
 use x86_64::instructions::tables::load_tss;
@@ -58,6 +58,6 @@ impl Gdt {
             load_tss(tss_sel);
         }
 
-        kprint!("Initialized GDT\n");
+        kinfo!("Initialized GDT");
     }
 }
