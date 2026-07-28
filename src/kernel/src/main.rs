@@ -20,6 +20,7 @@ mod logging;
 mod screen;
 mod mem;
 mod state;
+mod config;
 
 use spin::Once;
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
