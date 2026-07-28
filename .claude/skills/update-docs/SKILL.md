@@ -37,7 +37,7 @@ Every `.rs` file starts with the SPDX line as a standalone `//` comment on line 
 **Struct-level (`///`)**
 - One-line summary describing purpose, not just restating the name
 - Describe non-obvious invariants (e.g. "written once during init, then read-only")
-- Document each field with one line covering what it holds and any constraint
+- Fields: only document a field when the name alone is not enough — if a reader can infer what it holds and why from the name and type, leave it undocumented
 
 **Function-level (`///`)**
 - First line: active verb, short ("Allocate one free physical frame and return its address.")
@@ -48,6 +48,17 @@ Every `.rs` file starts with the SPDX line as a standalone `//` comment on line 
 
 **Field-level (`///`)**
 - One line. State what the value represents and any constraint or unit.
+
+## What to document
+
+Only these items require docs:
+
+- **File headers** (`//!`) — always
+- **Structs** (`///`) — always; fields only when the name alone is not enough to understand what it holds or why
+- **Traits** (`///`) — always
+- **Functions/methods** (`///`) — always
+
+Everything else — constants, statics, type aliases, enums, enum variants, `impl` blocks, `mod` declarations — gets a doc **only if the name and value together leave something genuinely unclear**. When in doubt, leave it undocumented.
 
 ## What not to do
 
