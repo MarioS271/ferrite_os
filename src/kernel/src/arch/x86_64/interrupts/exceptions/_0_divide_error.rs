@@ -1,5 +1,7 @@
-//! arch/x86_64/interrupts/exceptions/_0_divide_error.rs
-//! Divide Error Fault Handler
+//! Divide-error exception handler (vector 0).
+//!
+//! Fires when the CPU executes a `div` or `idiv` instruction with a zero divisor,
+//! or when the quotient is too large for the destination register.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +12,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame
 ) {

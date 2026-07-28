@@ -1,5 +1,10 @@
-//! arch/x86_64/interrupts/exceptions/_13_general_protection_fault.rs
-//! General Protection Fault Exception Handler
+//! General Protection Fault exception handler (vector 13).
+//!
+//! A GPF fires for a broad class of protection violations: accessing a segment
+//! with insufficient privilege, executing a privileged instruction from user mode,
+//! writing to a read-only page (before NX/WP enforcement), or passing a bad
+//! segment selector. The error code encodes the segment selector index when the
+//! fault is selector-related, or zero otherwise.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +15,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the error code (selector index or 0) and the interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame, error_code: u64
 ) {

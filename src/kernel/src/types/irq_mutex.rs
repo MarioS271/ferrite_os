@@ -1,5 +1,4 @@
-//! types/aligned_stack.rs
-//! Mutex which saves/restores IF state
+//! Interrupt-aware spinlock (`IrqMutex`).
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +9,16 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use x86_64::registers::rflags::RFlags;
 use crate::arch::instructions;
 
+/// A spinlock that saves and restores the CPU's Interrupt Flag (RFLAGS.IF).
+///
+/// When `lock()` is called, the current IF state is captured and interrupts are
+/// disabled. When the returned [`IrqMutexGuard`] is dropped, the lock is released
+/// and IF is restored to whatever it was before `lock()` was called. This prevents
+/// a deadlock that would occur if an interrupt handler tried to acquire a lock
+/// already held by the interrupted code.
+///
+/// Use this type instead of a plain spinlock anywhere that is accessed from both
+/// regular kernel code and interrupt handlers.
 pub struct IrqMutex<T> {
     data: UnsafeCell<T>,
     locked: AtomicBool,
@@ -19,6 +28,7 @@ unsafe impl<T: Send> Sync for IrqMutex<T> {}
 unsafe impl<T: Send> Send for IrqMutex<T> {}
 
 impl<T> IrqMutex<T> {
+    /// Create a new unlocked `IrqMutex` wrapping `val`. Usable in `const` context.
     pub const fn new(val: T) -> Self {
         IrqMutex {
             data: UnsafeCell::new(val),
@@ -26,6 +36,12 @@ impl<T> IrqMutex<T> {
         }
     }
 
+    /// Acquire the lock, disabling interrupts first.
+    ///
+    /// Reads the current RFLAGS, calls `cli` to disable interrupts, then spins in
+    /// a `compare_exchange` loop until the `locked` flag transitions from `false`
+    /// to `true`. Returns an [`IrqMutexGuard`] that releases the lock and restores
+    /// IF on drop.
     pub fn lock(&self) -> IrqMutexGuard<'_, T> {
         let rflags = x86_64::registers::rflags::read();
         instructions::disable_interrupts();
@@ -44,13 +60,20 @@ impl<T> IrqMutex<T> {
     }
 }
 
-
+/// RAII guard for [`IrqMutex`].
+///
+/// Implements [`Deref`] and [`DerefMut`] so the protected value is accessible
+/// directly through the guard. When dropped, releases the spinlock and re-enables
+/// interrupts if they were enabled at the time `lock()` was called.
 pub struct IrqMutexGuard<'g, T> {
     mutex: &'g IrqMutex<T>,
+    /// The RFLAGS value captured before `cli` was issued; IF bit determines whether
+    /// to call `sti` on drop.
     rflags: RFlags,
 }
 
 impl<'g, T> IrqMutexGuard<'g, T> {
+    /// Construct a guard associated with `mutex`, saving `rflags` for later restore.
     pub fn new(mutex: &'g IrqMutex<T>, rflags: RFlags) -> IrqMutexGuard<'g, T> {
         IrqMutexGuard{ mutex, rflags }
     }

@@ -1,5 +1,8 @@
-//! arch/x86_64/interrupts/exceptions/_14_page_fault.rs
-//! Page Fault Exception Handler
+//! Page-fault exception handler (vector 14).
+//!
+//! A page fault fires when the CPU cannot translate a virtual address: the page
+//! is not present, the access violates page protection flags, or a reserved bit
+//! in a page table entry is set. The faulting virtual address is stored in CR2.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -11,6 +14,12 @@ use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
 use x86_64::registers::control::Cr2;
 use crate::types::fmt_buffer::FmtBuffer;
 
+/// Panic with the faulting virtual address (from CR2), the error code flags, and
+/// the interrupt stack frame.
+///
+/// `error_code` is a bitfield (`PageFaultErrorCode`) that describes the nature of
+/// the fault: whether the page was present, whether it was a write or instruction
+/// fetch, and whether it came from user mode.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame,
     error_code: PageFaultErrorCode

@@ -1,5 +1,12 @@
-//! logging/x86_64/serial.rs
-//! Serial Logging on COM1
+//! x86_64 UART serial port implementation of [`_Serial`].
+//!
+//! Programs a 16550-compatible UART using the standard IBM PC I/O port layout.
+//! The initialization sequence follows the 16550 datasheet: disable interrupts,
+//! enable DLAB to write the baud rate divisor, configure 8N1 line format, enable
+//! and clear the FIFO, and set modem control lines.
+//!
+//! Writing is polled: the handler reads bit 5 of the Line Status Register
+//! (Transmitter Empty) in a spin loop before writing each byte to the data register.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -13,8 +20,15 @@ static COM2_BASE_ADDRESS: u16 = 0x02F8;
 static COM3_BASE_ADDRESS: u16 = 0x03E8;
 static COM4_BASE_ADDRESS: u16 = 0x02E8;
 
+/// x86_64 UART serial port, implementing [`_Serial`].
+///
+/// Stores the I/O base address for the selected COM port and an atomic flag
+/// tracking whether `init()` has been called. An uninitialized `Serial` must not
+/// have `write()` called on it.
 pub struct Serial {
+    /// Set to `true` after `init()` completes successfully.
     initialized: AtomicBool,
+    /// I/O base address for this COM port (e.g., `0x03F8` for COM1).
     base_addr: u16,
 }
 

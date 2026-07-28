@@ -1,5 +1,9 @@
-//! arch/x86_64/interrupts/exceptions/_17_alignment_check.rs
-//! Alignment Check Exception Handler
+//! Alignment-check exception handler (vector 17, `#AC`).
+//!
+//! Fires when a memory access is not aligned to its natural boundary and the
+//! CR0.AM flag is set together with EFLAGS.AC. The error code is always 0.
+//! Alignment checking is typically only enabled for user-mode code; the kernel
+//! does not currently enable it.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +14,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the error code (always 0) and interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame, error_code: u64
 ) {

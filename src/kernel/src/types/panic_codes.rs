@@ -1,17 +1,27 @@
-//! types/panic_codes.rs
-//! Panic Codes used to differentiate different kinds of kernel panics
+//! Panic codes for classifying kernel panics.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
+/// Numeric classification of the reason for a kernel panic.
+///
+/// Each variant has a `u16` discriminant. Codes are grouped by category:
+/// - `0x0000–0x00FF`: general / catch-all
+/// - `0x0100–0x01FF`: CPU exception handlers
+/// - `0x0300–0x03FF`: memory subsystem
+/// - `0x1000–0x1FFF`: display / font subsystem
+///
+/// Call [`as_str`](PanicCode::as_str) to get a human-readable name for any variant.
 #[repr(u16)]
 pub enum PanicCode {
     // General
     Unknown = 0x0000,
     ManuallyTriggeredPanic = 0x0001,
+    /// A subsystem failed to initialize during boot.
     InitFailure = 0x0002,
 
     // Exceptions
+    /// An interrupt vector fired that should be impossible in long mode (reserved).
     IllegalInterrupt = 0x0099,
     DivideError = 0x0100,
     NmiHardwareFailiure = 0x0102,
@@ -33,19 +43,27 @@ pub enum PanicCode {
     SecurityException = 0x0130,
 
     // Memory
+    /// No usable memory-map entry was large enough to hold the PMM bitmap.
     NoValidMemMapEntry = 0x0300,
+    /// `pmm::alloc` or `pmm::free` was called before `pmm::init`.
     PmmNotInitialized = 0x0301,
+    /// `pmm::free` was called on a frame that was already free.
     DoubleFree = 0x0302,
+    /// `pmm::free` was called on a frame that must not be freed (frame 0, bitmap range, or out-of-range).
     IllegalFree = 0x0303,
+    /// The PMM could not allocate a frame because all frames are in use.
     OutOfMemory = 0x0304,
     // Memory: Paging
+    /// `vmm::unmap_page` was called on a virtual address with no present mapping.
     InvalidPageOperation = 0x320,
 
     // Display
+    /// The PSF2 font file embedded in the binary has the wrong magic number.
     InvalidPsf2MagicNumber = 0x1000,
 }
 
 impl PanicCode {
+    /// Return the variant name as a static string, suitable for printing in a panic message.
     pub fn as_str(&self) -> &'static str {
         match self {
             // General

@@ -1,5 +1,8 @@
-//! arch/x86_64/interrupts/exceptions/_10_invalid_tss.rs
-//! Invalid TSS Exception Handler
+//! Invalid-TSS exception handler (vector 10, `#TS`).
+//!
+//! Fires when the CPU encounters a problem loading a segment selector from the TSS
+//! — e.g., a bad limit or an invalid IST pointer. The error code is a segment
+//! selector index identifying which selector caused the fault.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +13,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the segment selector error code and interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame, error_code: u64
 ) {

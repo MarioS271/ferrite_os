@@ -1,5 +1,18 @@
-//! panic.rs
-//! Panic Handler
+//! Kernel panic paths.
+//!
+//! Two distinct panic entry points exist because they serve different callers:
+//!
+//! - [`kernel_panic`]: called explicitly by kernel code when an unrecoverable
+//!   condition is detected (e.g., memory corruption, bad invariant). Takes a
+//!   [`PanicCode`] and a message string.
+//! - The `#[panic_handler]` function: required by the Rust compiler; triggered
+//!   by Rust's own runtime machinery — array out-of-bounds, integer overflow in
+//!   debug builds, or an explicit `panic!()` macro call.
+//!
+//! Both paths disable interrupts, print to serial and framebuffer if they are
+//! already initialized, and then halt the CPU with an infinite `hlt` loop.
+//! Re-entrant panics (a panic while handling a panic) are detected via atomic
+//! flags and jump straight to the halt loop to avoid infinite recursion.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -11,10 +24,23 @@ use crate::arch::instructions;
 use crate::SIMPLE_STATE;
 use crate::types::fmt_buffer::FmtBuffer;
 
+/// Set to `true` the first time `kernel_panic` fires; prevents re-entrant panics
+/// from looping back through the printing logic.
 static KERNEL_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
+
+/// Set to `true` the first time the Rust `#[panic_handler]` fires; same purpose
+/// as `KERNEL_PANIC_TRIGERRED` but for the Rust panic path.
 static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 
-/// Kernel's custom panic handler, prints debug text and halts
+/// Halt the kernel with a diagnostic message.
+///
+/// Disables interrupts immediately to freeze system state, then prints `panic_code`
+/// and `panic_message` to serial (if initialized) and to the framebuffer (if
+/// initialized). The screen is cleared before printing so the message is always
+/// visible. Finally, loops forever issuing `hlt`.
+///
+/// If this function is called a second time (re-entrant panic), it skips straight
+/// to the `hlt` loop to avoid infinite recursion.
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
 
@@ -53,7 +79,13 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     }
 }
 
-/// Rust's internal panic handler, only used when rust runtime exceptions occur
+/// Rust's required `#[panic_handler]`, called for language-level panics.
+///
+/// This is invoked when Rust's own safety checks fire — for example, a failed
+/// `unwrap`, an out-of-bounds slice index, or an explicit `panic!()`. Unlike
+/// `kernel_panic`, this path does not take a `PanicCode`; instead it formats
+/// the `PanicInfo` message and source location into fixed-size [`FmtBuffer`]s
+/// (no heap required) and then prints them the same way `kernel_panic` does.
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     use core::fmt::Write;

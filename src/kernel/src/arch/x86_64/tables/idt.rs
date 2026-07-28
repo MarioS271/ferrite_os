@@ -1,5 +1,16 @@
-//! arch/x86_64/tables/idt.rs
-//! Interrupt Descriptor Table Struct
+//! Interrupt Descriptor Table (IDT) initialization.
+//!
+//! The IDT maps every interrupt vector (0–255) to a handler function. The CPU
+//! consults the IDT on every exception and hardware interrupt, so the table must
+//! remain in memory with a static lifetime — hence the [`spin::Once`] wrapper.
+//!
+//! Four exception vectors use IST entries so the CPU switches to a known-good
+//! stack before running the handler, even if the main stack is corrupt:
+//! - **Double fault** (vector 8): IST 0 — fires when a fault occurs while
+//!   handling another fault; a corrupted stack would make this unrecoverable.
+//! - **Debug** (vector 1): IST 1 — needs a clean stack to safely inspect state.
+//! - **NMI** (vector 2): IST 2 — non-maskable, can interrupt any context.
+//! - **Machine check** (vector 18): IST 3 — hardware-reported fatal error.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -8,13 +19,31 @@ use crate::kprint;
 use spin::Once;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
+/// IST index for the double-fault handler. Indexes into `tss.interrupt_stack_table`.
 const DOUBLE_FAULT_IST_STACK_INDEX: u16 = 0;
+
+/// IST index for the debug exception handler.
 const DEBUG_IST_STACK_INDEX: u16 = 1;
+
+/// IST index for the Non-Maskable Interrupt handler.
 const NMI_IST_STACK_INDEX: u16 = 2;
+
+/// IST index for the machine-check exception handler.
 const MACHINE_CHECK_IST_STACK_INDEX: u16 = 3;
 
+/// The single kernel IDT. A `Once` is used because `InterruptDescriptorTable::load`
+/// requires the table to have a `'static` lifetime — the table must not move or
+/// be dropped after `lidt` is issued.
 static INTERRUPT_DESCRIPTOR_TABLE: Once<InterruptDescriptorTable> = Once::new();
 
+/// Build and load the IDT with all exception and IRQ handlers.
+///
+/// Handlers for exceptions that should never fire in long mode (e.g., bound-range,
+/// vector 5) use the generic [`invalid_fault_handler`] which panics with the vector
+/// number if somehow triggered. Four handlers are assigned IST entries; all others
+/// use the default kernel stack. IRQ handlers start at vector 32 (PIC master offset).
+///
+/// [`invalid_fault_handler`]: crate::arch::x86_64::interrupts::exceptions::invalid_fault_handler
 pub fn init() {
     INTERRUPT_DESCRIPTOR_TABLE.call_once(|| {
         let mut idt = InterruptDescriptorTable::new();

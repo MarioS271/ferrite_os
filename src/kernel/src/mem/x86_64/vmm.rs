@@ -1,5 +1,16 @@
-//! mem/x86_64/vmm.rs
-//! Virtual Memory Manager
+//! Virtual Memory Manager (VMM) for x86_64.
+//!
+//! Owns the kernel's PML4 page table and provides page-granularity mapping and
+//! unmapping. The x86_64 architecture uses a four-level page table hierarchy:
+//! PML4 (level 4) → PDPT (level 3) → PD (level 2) → PT (level 1). Each level
+//! is a 512-entry [`PageTable`]; an entry at levels 4–2 points to the next level's
+//! physical frame, and an entry at level 1 points directly to the mapped frame.
+//!
+//! Initialization allocates a fresh PML4 frame, copies Limine's higher-half
+//! entries (indices 256–511, covering the kernel's virtual address range), and
+//! installs it as the active page table by writing to CR3. The HHDM offset is
+//! stored so that any physical frame address can be accessed by adding the offset
+//! to get its virtual address.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -12,17 +23,34 @@ use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::{PhysAddr, VirtAddr};
 
+/// Global VMM state, initialized exactly once by [`init`].
 static VMM_DATA: Once<VmmData> = Once::new();
 
+/// VMM state shared with helper functions and callers.
 pub struct VmmData {
+    /// Virtual address of the active PML4 table (physical address + HHDM offset).
+    /// This is the table installed in CR3.
     pub plm4_ptr: *mut PageTable,
+    /// The Higher-Half Direct Map offset provided by Limine. Add this to any
+    /// physical address to get its virtually-mapped address.
     pub hhdm_offset: u64,
 }
 
-// Safe because all access is controlled via the Once
+// Safe because VmmData is written once during init (single-threaded) and then
+// only read after that.
 unsafe impl Send for VmmData {}
 unsafe impl Sync for VmmData {}
 
+/// Initialize the VMM and install a kernel-owned PML4 into CR3.
+///
+/// Reads the current PML4 from CR3 (Limine's), allocates a fresh zeroed frame
+/// for the kernel's own PML4, copies entries 256–511 (the higher-half kernel
+/// mappings) from Limine's table, then writes the new PML4's physical frame to CR3.
+/// After this call, all virtual addresses the kernel uses continue to resolve
+/// correctly through the kernel-owned page table.
+///
+/// # Panics
+/// Panics if the PMM cannot allocate the PML4 frame (out of memory).
 pub fn init(hhdm_offset: u64) {
     let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 
@@ -60,11 +88,29 @@ pub fn init(hhdm_offset: u64) {
     });
 }
 
+/// Return a reference to the global [`VmmData`].
+///
+/// # Panics
+/// Panics if called before [`init`].
 pub fn get() -> &'static VmmData {
     VMM_DATA.get().unwrap()
 }
 
-// Unsafe func because memory will be modified by caller-given data
+/// Map one 4 KiB virtual page to a physical frame.
+///
+/// Walks the four-level page table from PML4 down to PT. At each intermediate
+/// level (PML4 → PDPT → PD), if the entry is not present, a new zeroed frame is
+/// allocated from the PMM and installed with `PRESENT | WRITABLE` flags (plus
+/// `USER_ACCESSIBLE` if the caller's `flags` include it). The P1 entry is then
+/// written with `phys` and the caller-supplied `flags` (with `PRESENT` forced on).
+///
+/// # Safety
+/// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
+/// valid, PMM-allocated frame. Mapping the wrong address can corrupt kernel data
+/// structures or create exploitable page-table entries.
+///
+/// # Panics
+/// Panics if the PMM runs out of frames when allocating an intermediate page table.
 pub unsafe fn map_page(virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
     let mut current_pagetable: *mut PageTable = get().plm4_ptr;
     let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
@@ -93,6 +139,20 @@ pub unsafe fn map_page(virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
     entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
 }
 
+/// Unmap one 4 KiB virtual page and flush the TLB entry for it.
+///
+/// Walks the four-level page table to find the P1 entry for `virt`. If any
+/// intermediate level is not present, or if the P1 entry itself is not present,
+/// the function panics — attempting to unmap a page that was never mapped is a
+/// programming error. Sets the P1 entry to "unused" (zeroes all flags and the
+/// frame address) and issues a `invlpg` for `virt` to invalidate the TLB entry.
+///
+/// # Safety
+/// The caller must ensure `virt` was previously mapped and that no live code or
+/// data references the page after this call returns.
+///
+/// # Panics
+/// Panics if any level of the walk is not present (page was never mapped).
 pub unsafe fn unmap_page(virt: VirtAddr) {
     let mut current_pagetable: *mut PageTable = get().plm4_ptr;
 

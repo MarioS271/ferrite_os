@@ -1,5 +1,8 @@
-//! arch/x86_64/interrupts/exceptions/_30_security_exception.rs
-//! Security Exception Handler
+//! Security exception handler (vector 30, `#SX`, AMD SVM).
+//!
+//! AMD-specific: fired by the hypervisor to inject a security-related event into
+//! a guest (e.g., an INIT or SIPI signal). Not applicable to a bare-metal kernel
+//! that is not running as an AMD SVM guest.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +13,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the error code and interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame, error_code: u64
 ) {

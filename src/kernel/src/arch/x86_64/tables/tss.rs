@@ -1,5 +1,10 @@
-//! arch/x86_64/tables/tss.rs
-//! Task State Segment Struct
+//! Task State Segment (TSS) initialization.
+//!
+//! The TSS holds the Interrupt Stack Table (IST): an array of up to 7 stack
+//! pointers the CPU can switch to when delivering certain interrupts. IST entries
+//! are used for exceptions that must not rely on the current (possibly corrupted)
+//! stack — double fault, NMI, debug, and machine-check handlers each get their own
+//! guaranteed-valid stack this way.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,13 +15,32 @@ use spin::Once;
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
 
+/// The single kernel TSS. Stored in a [`spin::Once`] because `TaskStateSegment`
+/// is not `const`-constructible. The GDT reads this via `get().unwrap()` when
+/// building the TSS descriptor, so `tss::init()` must run before `gdt::init()`.
 pub static TASK_STATE_SEGMENT: Once<TaskStateSegment> = Once::new();
 
+/// 8 KiB stack for IST slot 0 (double-fault handler).
+/// `static mut` because `VirtAddr::from_ptr` needs a raw pointer to its top.
 static mut IST1_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+
+/// 8 KiB stack for IST slot 1 (debug handler).
 static mut IST2_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+
+/// 8 KiB stack for IST slot 2 (NMI handler).
 static mut IST3_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
+
+/// 8 KiB stack for IST slot 3 (machine-check handler).
 static mut IST4_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
+/// Allocate IST stacks and initialize the TSS.
+///
+/// Computes the top address of each IST stack array (stacks grow downward, so the
+/// CPU needs the highest address) and stores them in `interrupt_stack_table[0..3]`.
+/// The TSS is then stored in `TASK_STATE_SEGMENT` via `call_once`.
+///
+/// Safety: accesses `static mut` stack arrays, which is safe here because the
+/// kernel is still single-threaded at this point in `kmain`.
 pub fn init() {
     // Safe because we are still single threaded at this point
     unsafe {

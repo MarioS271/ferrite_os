@@ -1,5 +1,4 @@
-//! mem/x86_64/vmm_helpers.rs
-//! Virtual Memory Manager Helper Functions
+//! Shared helper functions for the VMM.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -8,6 +7,8 @@ use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::structures::paging::PhysFrame;
 
+/// Panic with [`PanicCode::InvalidPageOperation`] when `unmap_page` encounters
+/// a level of the page table walk that is not present.
 pub fn invalid_unmap_panic() -> ! {
     kernel_panic(
         PanicCode::InvalidPageOperation,
@@ -15,6 +16,8 @@ pub fn invalid_unmap_panic() -> ! {
     );
 }
 
+/// Panic with [`PanicCode::OutOfMemory`] when the VMM cannot allocate a frame
+/// from the PMM (called via `unwrap_or_else` on `pmm::alloc()`).
 pub fn out_of_memory_panic() -> ! {
     kernel_panic(
         PanicCode::OutOfMemory,
@@ -22,6 +25,16 @@ pub fn out_of_memory_panic() -> ! {
     )
 }
 
+/// Allocate one physical frame from the PMM and zero its entire contents.
+///
+/// Converts the allocated physical address to a virtual address using the HHDM
+/// offset, writes zeros over the full 4 KiB (one `PageTable`-sized region), and
+/// returns the frame as a [`PhysFrame`].
+///
+/// Used when `map_page` needs to install a new intermediate page-table level.
+///
+/// # Panics
+/// Panics if the PMM is out of memory.
 pub fn alloc_zeroed_frame() -> PhysFrame {
     use crate::mem::pmm;
     use crate::mem::vmm::get;

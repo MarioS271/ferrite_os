@@ -1,5 +1,15 @@
-//! mem/pmm.rs
-//! Physical Memory Manager
+//! Physical Memory Manager (PMM).
+//!
+//! Tracks which 4 KiB physical frames are free using a flat bitmap: one bit per
+//! frame, `0` = free, `1` = used. The bitmap itself is placed inside the first
+//! usable memory region large enough to hold it, and those frames are permanently
+//! marked as used so they are never handed out.
+//!
+//! The public API is intentionally minimal: [`init`] (called once from `kmain`),
+//! [`alloc`] (returns the physical address of one free frame), and [`free`]
+//! (marks a previously allocated frame as free again). All three functions panic
+//! on detected misuse rather than returning errors, since a memory manager
+//! operating on bad inputs cannot be corrected at runtime.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -12,20 +22,43 @@ use x86_64::PhysAddr;
 use limine::memmap;
 use limine::memmap::MEMMAP_USABLE;
 
-pub static FRAME_SIZE: u64 = 4096;     // 4 KiB frame size
+/// The granularity of all physical memory operations. Every allocation and free
+/// operates on exactly one frame of this size.
+pub static FRAME_SIZE: u64 = 4096;
+
+/// Global PMM state, initialized exactly once by [`init`].
 static PMM_DATA: Once<PmmData> = Once::new();
 
+/// Internal PMM state: the bitmap pointer and the frame index range it occupies.
 struct PmmData {
+    /// Pointer to the first byte of the allocation bitmap, in virtual address space
+    /// (physical base + HHDM offset). Each bit represents one physical frame.
     bitmap_ptr: *mut u8,
+    /// Total number of frames covered by the bitmap (derived from the highest
+    /// physical address in any usable memmap entry).
     total_frames: u64,
+    /// Index of the first frame occupied by the bitmap itself. Frames in
+    /// `bitmap_start_frame..=bitmap_end_frame` are permanently reserved.
     bitmap_start_frame: u64,
+    /// Index of the last frame occupied by the bitmap itself.
     bitmap_end_frame: u64,
 }
 
-// Safe because all access is controlled via the Once
+// Safe because all access to PmmData fields goes through the Once, and the
+// kernel is currently single-threaded (no concurrent mutation).
 unsafe impl Send for PmmData {}
 unsafe impl Sync for PmmData {}
 
+/// Initialize the PMM from the Limine memory map.
+///
+/// Scans `entries` for the highest usable physical address to determine how many
+/// frames exist, then computes how many bytes the bitmap needs. Finds the first
+/// usable region large enough to hold the bitmap and places it there. Initializes
+/// all bitmap bits to 1 (all used), then clears bits for each usable frame that is
+/// not frame 0 and not inside the bitmap itself.
+///
+/// # Panics
+/// Panics if no single usable memory region is large enough to hold the bitmap.
 pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     let mut max_entry = 0;
 
@@ -121,6 +154,15 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     });
 }
 
+/// Allocate one free physical frame and return its address.
+///
+/// Scans the bitmap from index 0 for the first byte that is not `0xFF` (fully
+/// used), finds the lowest zero bit within that byte, marks it as used, and
+/// returns the corresponding physical address. Returns `None` if all frames are
+/// used; also prints a warning via `kprint!`.
+///
+/// # Panics
+/// Panics if called before [`init`].
 pub fn alloc() -> Option<PhysAddr> {
     if PMM_DATA.get().is_none() {
         kernel_panic(
@@ -155,6 +197,19 @@ pub fn alloc() -> Option<PhysAddr> {
     None
 }
 
+/// Free a previously allocated physical frame.
+///
+/// Computes the frame index from `addr`, validates it (not frame 0, not inside
+/// the bitmap, not beyond `total_frames`, and not already free), then clears the
+/// corresponding bitmap bit.
+///
+/// # Panics
+/// Panics via [`kernel_panic`] on any of the following:
+/// - PMM not yet initialized.
+/// - `addr` points to frame 0 (the null frame is never allocatable).
+/// - `addr` falls within the range occupied by the PMM bitmap.
+/// - `addr` is beyond the tracked address space.
+/// - The frame is already marked free (double-free detection).
 pub fn free(addr: PhysAddr) {
     if PMM_DATA.get().is_none() {
         kernel_panic(

@@ -1,5 +1,8 @@
-//! arch/x86_64/interrupts/exceptions/_29_vmm_communication_exception.rs
-//! VMM Communication Exception Handler
+//! VMM communication exception handler (vector 29, `#VC`, AMD SVM).
+//!
+//! AMD-specific: fires when a SEV-ES (Secure Encrypted Virtualization - Encrypted
+//! State) guest needs to communicate with the hypervisor. Not relevant for a
+//! non-SEV kernel, so treated as a fatal exception.
 //!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
@@ -10,6 +13,7 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
+/// Panic with the error code and interrupt stack frame.
 pub extern "x86-interrupt" fn handler(
     isf: InterruptStackFrame, error_code: u64
 ) {
