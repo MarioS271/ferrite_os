@@ -24,7 +24,6 @@ use super::subcats::cpu::Cpu;
 use super::subcats::fs::Fs;
 use super::subcats::procs::Procs;
 
-/// The single global kernel state instance. Accessed via [`KState::get`].
 static KSTATE: KState = KState {
     devs: Devs {},
     vdevs: VDevs {},

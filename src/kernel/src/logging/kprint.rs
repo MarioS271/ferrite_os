@@ -21,9 +21,7 @@ struct KernelPrintState {
     log_head: usize,
     /// Index of the oldest readable byte. Advances when `log_head` laps it.
     log_tail: usize,
-    /// Current framebuffer cursor column in pixels.
     cursor_x: usize,
-    /// Current framebuffer cursor row in pixels.
     cursor_y: usize,
 }
 
@@ -46,6 +44,7 @@ fn write_log_buf(state: &mut KernelPrintState, s: &str) {
     }
 }
 
+/// Write `string` to the ring buffer, serial port, and framebuffer (if each is initialized).
 fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str) {
     use crate::SIMPLE_STATE;
 

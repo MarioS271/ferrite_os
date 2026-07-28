@@ -38,15 +38,10 @@ impl Psf2Font {
 
 /// Parsed PSF2 file header. Only the fields needed for rendering are extracted.
 struct Psf2Header {
-    /// Byte offset where the glyph bitmap data begins (equals the header size).
     pub header_size: u32,
-    /// Total number of glyphs in the file; also the maximum Unicode codepoint index.
     pub glyph_count: u32,
-    /// Number of bytes occupied by one glyph's bitmap data.
     pub bytes_per_glyph: u32,
-    /// Glyph height in pixels (rows per glyph).
     pub height: u32,
-    /// Glyph width in pixels (columns per glyph).
     pub width: u32,
 }
 
@@ -133,6 +128,10 @@ impl Psf2Font {
 }
 
 impl Psf2Header {
+    /// Extract header fields from a raw PSF2 byte slice.
+    ///
+    /// # Panics
+    /// Panics if the magic number at offset 0 does not match [`MAGIC_NUMBER`].
     fn parse(psf2_font: &[u8]) -> Self {
         let read_u32 = |offset: usize| -> u32 {
             u32::from_le_bytes(psf2_font[offset..(offset + 4)].try_into().unwrap())
