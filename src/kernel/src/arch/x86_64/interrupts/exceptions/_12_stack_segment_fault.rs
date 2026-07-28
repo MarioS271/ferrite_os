@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Stack-segment fault exception handler (vector 12, `#SS`).
 //!
-//! Fires on stack-related violations: loading SS with a non-present descriptor,
-//! or a stack access that exceeds the stack segment's limit. The error code is
-//! the SS segment selector index, or 0 for a limit violation.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

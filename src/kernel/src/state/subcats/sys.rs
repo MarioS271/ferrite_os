@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds system-wide hardware metadata: detected buses, firmware info, and registered drivers.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Sys {
 
 }

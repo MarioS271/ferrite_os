@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! VMM communication exception handler (vector 29, `#VC`, AMD SVM).
 //!
-//! AMD-specific: fires when a SEV-ES (Secure Encrypted Virtualization - Encrypted
-//! State) guest needs to communicate with the hypervisor. Not relevant for a
-//! non-SEV kernel, so treated as a fatal exception.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

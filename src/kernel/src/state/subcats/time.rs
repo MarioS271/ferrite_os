@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds the system clock source, active timer list, and kernel uptime counter.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Time {
 
 }

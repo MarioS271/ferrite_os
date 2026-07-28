@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Kernel print macro and unified logging output.
-//!
-//! [`kprint!`] is the primary logging interface for the kernel. Each call holds an
-//! [`IrqMutexGuard`] for its entire duration, preventing IRQ handlers from interleaving
-//! output mid-format. Output goes to an in-memory ring buffer, serial, and the framebuffer
-//! (with software scrolling when the cursor reaches the last row).
+//! Kernel print macro ([`kprint!`]) and the logging state behind it.
 //!
 //! Authors: MarioS271
 
@@ -17,9 +12,9 @@ const LOG_BUFFER_SIZE: usize = u16::MAX as usize;
 struct KernelPrintState {
     /// Circular byte buffer holding the most recent log output.
     log_buf: [u8; LOG_BUFFER_SIZE],
-    /// Index of the next byte to write. Wraps via modulo `LOG_BUFFER_SIZE`.
+    /// Index of the next byte to write into `log_buf`.
     log_head: usize,
-    /// Index of the oldest readable byte. Advances when `log_head` laps it.
+    /// Index of the oldest readable byte in `log_buf`.
     log_tail: usize,
     cursor_x: usize,
     cursor_y: usize,
@@ -34,6 +29,7 @@ static KPRINT_STATE: IrqMutex<KernelPrintState> = IrqMutex::new(KernelPrintState
     cursor_y: 0,
 });
 
+/// Append `s` to the ring buffer, advancing the tail when the head laps it.
 fn write_log_buf(state: &mut KernelPrintState, s: &str) {
     for &b in s.as_bytes() {
         state.log_buf[state.log_head % LOG_BUFFER_SIZE] = b;
@@ -89,34 +85,26 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
     }
 }
 
-/// Release [`KPRINT_STATE`]'s lock without restoring the interrupt flag.
-///
-/// Thin wrapper around [`IrqMutex::force_unlock`] for use in panic paths that cannot
-/// access [`KPRINT_STATE`] directly. See [`IrqMutex::force_unlock`] for the full
-/// safety contract.
+/// Release [`KPRINT_STATE`]'s lock without restoring the interrupt flag, for panic paths.
 ///
 /// # Safety
-/// Same as [`IrqMutex::force_unlock`]: must only be called from a panic handler that
-/// will halt the CPU immediately after and will not access [`KPRINT_STATE`] through
-/// the mutex again.
+/// Same contract as [`IrqMutex::force_unlock`]: only call from a panic handler that
+/// halts immediately after and never accesses [`KPRINT_STATE`] again.
 pub unsafe fn force_unlock_kprint_state() {
     KPRINT_STATE.force_unlock();
 }
 
-/// RAII handle that holds the [`KPRINT_STATE`] lock for the duration of a `kprint!` call.
-/// Holds the lock across all `write_str` fragments so output cannot be interleaved.
+/// RAII handle that holds the [`KPRINT_STATE`] lock for one `kprint!` call, preventing interleaved output.
 pub struct KernelWriter {
     lock: IrqMutexGuard<'static, KernelPrintState>
 }
 impl KernelWriter {
-    /// Acquire [`KPRINT_STATE`] and return a [`KernelWriter`] that holds the guard.
-    ///
-    /// Disables interrupts for the duration of the returned handle's lifetime.
-    /// Called once per `kprint!` invocation; do not call directly.
+    /// Acquire [`KPRINT_STATE`] and return a [`KernelWriter`] holding the guard.
     pub fn lock() -> Self {
         Self { lock: KPRINT_STATE.lock() }
     }
 
+    /// Write `string` with an optional color to all active output sinks.
     pub fn print_raw(&mut self, string: &str, color: Option<u32>) {
         kprint(&mut self.lock, string, color);
     }
@@ -128,11 +116,7 @@ impl core::fmt::Write for KernelWriter {
     }
 }
 
-/// Print a formatted message to all active kernel output sinks.
-///
-/// Accepts the same format string syntax as `std::print!`. Output goes to the
-/// in-memory log ring buffer, the serial port (if initialized), and the framebuffer
-/// (if initialized, with automatic scrolling). Safe to call from interrupt handlers.
+/// Print a formatted message (like `print!`) to all active kernel output sinks.
 #[macro_export]
 macro_rules! kprint {
     ($($arg:tt)*) => {
@@ -155,6 +139,7 @@ pub enum LogLevelColor {
     Debug = 0x000000ff,
 }
 
+/// Log a line at emergency severity (system is unusable).
 #[macro_export]
 macro_rules! kemerg {
     ($($arg:tt)*) => {
@@ -167,6 +152,7 @@ macro_rules! kemerg {
         }
     };
 }
+/// Log a line at alert severity (action must be taken immediately).
 #[macro_export]
 macro_rules! kalert {
     ($($arg:tt)*) => {
@@ -179,6 +165,7 @@ macro_rules! kalert {
         }
     };
 }
+/// Log a line at critical severity.
 #[macro_export]
 macro_rules! kcrit {
     ($($arg:tt)*) => {
@@ -191,6 +178,7 @@ macro_rules! kcrit {
         }
     };
 }
+/// Log a line at error severity.
 #[macro_export]
 macro_rules! kerror {
     ($($arg:tt)*) => {
@@ -203,6 +191,7 @@ macro_rules! kerror {
         }
     };
 }
+/// Log a line at warning severity.
 #[macro_export]
 macro_rules! kwarn {
     ($($arg:tt)*) => {
@@ -215,6 +204,7 @@ macro_rules! kwarn {
         }
     };
 }
+/// Log a line at info severity.
 #[macro_export]
 macro_rules! kinfo {
     ($($arg:tt)*) => {
@@ -227,6 +217,7 @@ macro_rules! kinfo {
         }
     };
 }
+/// Log a line at debug severity; compiled out unless the `debug-logging` feature is enabled.
 #[macro_export]
 macro_rules! kdebug {
     ($($arg:tt)*) => {

@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds registered network interfaces, routing tables, and active sockets.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Net {
 
 }

@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Central kernel state aggregate (`KState`).
-//!
-//! `KState` groups every OS subsystem's state into a single static structure so
-//! there is one canonical location for all kernel data. Each field is a dedicated
-//! subcategory struct (implementing [`KStateSubCategory`]) that will hold the
-//! subsystem's data as it is implemented.
-//!
-//! Access the global instance via [`KState::get`], which returns a `&'static KState`.
+//! Central kernel state aggregate ([`KState`]): one static holding every OS
+//! subsystem's state.
 //!
 //! Authors: MarioS271
 
@@ -40,11 +34,7 @@ static KSTATE: KState = KState {
     procs: Procs {},
 };
 
-/// The central kernel state aggregate.
-///
-/// Each field groups a logical OS domain. Fields are `pub` so subsystems can
-/// access their slice of state directly through the `KState` reference returned
-/// by [`KState::get`].
+/// The central kernel state aggregate; one field per OS subsystem domain.
 pub struct KState {
     pub devs: Devs,
     pub vdevs: VDevs,

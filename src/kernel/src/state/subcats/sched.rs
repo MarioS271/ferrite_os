@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds scheduler runqueues and tracks the current process on each CPU.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Sched {
 
 }

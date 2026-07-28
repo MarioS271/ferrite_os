@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Overflow trap handler (vector 4, `into` instruction).
 //!
-//! Fires when the `into` instruction is executed and the overflow flag (OF) is set.
-//! Rare in modern 64-bit code since `into` is not encodable in 64-bit mode; this
-//! handler exists for completeness.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Device-not-available exception handler (vector 7, `#NM`).
 //!
-//! Fires when an FPU or SSE instruction is executed while the CR0.TS (Task Switched)
-//! flag is set. Typically used by OS schedulers to implement lazy FPU context
-//! switching. The kernel does not currently use lazy FPU switching, so this fires
-//! only on unexpected conditions.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Segment-not-present exception handler (vector 11, `#NP`).
 //!
-//! Fires when the CPU tries to load a segment register from a descriptor whose
-//! Present bit is 0. The error code is a segment selector index indicating the
-//! offending descriptor.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

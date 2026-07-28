@@ -1,26 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Serial port abstraction: trait definition and port identifier enum.
-//!
-//! Separating the trait from the x86_64 implementation lets the arch module re-export
-//! the concrete type under a common path while keeping the trait as the stable interface.
+//! Serial port abstraction: the [`_Serial`] trait and the [`SerialPort`] identifier enum.
 //!
 //! Authors: MarioS271
 
 /// Interface for a serial port implementation.
-///
-/// Implementations are arch-specific; the x86_64 implementation is in
-/// `logging::x86_64::serial`.
 pub trait _Serial {
     /// Create a new (uninitialized) serial port instance for the given COM port.
     fn new(port: SerialPort) -> Self;
 
-    /// Program the UART hardware and mark the port as ready to use.
-    ///
-    /// Returns `Err` if the port is already initialized; `Ok` otherwise.
+    /// Program the UART hardware and mark the port ready; `Err` if already initialized.
     fn init(&self) -> Result<(), &'static str>;
 
-    /// Write all bytes of `string` to the serial port, blocking until each byte
-    /// is accepted by the transmit FIFO.
+    /// Write all bytes of `string` to the port, blocking until each is accepted.
     fn write(&self, string: &str);
 }
 

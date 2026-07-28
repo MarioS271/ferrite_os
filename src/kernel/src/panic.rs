@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Kernel panic paths.
-//!
-//! Two distinct panic entry points exist because they serve different callers:
-//! - [`kernel_panic`] is called explicitly by kernel code with a [`PanicCode`]
-//!   and message.
-//! - The `#[panic_handler]` is required by the Rust compiler and fires on
-//!   runtime panics (`panic!()`, out-of-bounds, overflow in debug builds).
+//! Kernel panic paths: [`kernel_panic`] for explicit kernel panics and the
+//! required `#[panic_handler]` for language-level panics.
 //!
 //! Authors: MarioS271
 
@@ -22,9 +17,7 @@ static KERNEL_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 /// Prevents infinite panic re-entry on the `#[panic_handler]` path.
 static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 
-/// Halt the kernel with a diagnostic message.
-///
-/// Re-entrant calls (panic while panicking) skip straight to the `hlt` loop.
+/// Halt the kernel with a diagnostic message; re-entrant calls skip straight to the halt loop.
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
 
@@ -67,10 +60,7 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     }
 }
 
-/// Rust's required `#[panic_handler]`, called for language-level panics.
-///
-/// Formats `PanicInfo` message and source location into fixed-size [`FmtBuffer`]s
-/// (no heap required). Re-entrant calls skip straight to the `hlt` loop.
+/// Rust's required `#[panic_handler]` for language-level panics.
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     use core::fmt::Write;

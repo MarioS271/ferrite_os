@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Non-Maskable Interrupt (NMI) handler (vector 2).
 //!
-//! An NMI cannot be masked by the CPU's IF flag and typically indicates a hardware
-//! failure such as a memory parity error or a watchdog timeout. It runs on IST
-//! stack 2 so it can fire safely regardless of the main stack's state. Currently
-//! treated as a fatal hardware failure.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

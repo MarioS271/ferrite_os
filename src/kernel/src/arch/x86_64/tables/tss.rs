@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Task State Segment (TSS) initialization.
-//!
-//! The TSS holds the Interrupt Stack Table (IST): an array of up to 7 stack
-//! pointers the CPU can switch to when delivering certain interrupts. IST entries
-//! are used for exceptions that must not rely on the current (possibly corrupted)
-//! stack — double fault, NMI, debug, and machine-check handlers each get their own
-//! guaranteed-valid stack this way.
+//! Task State Segment (TSS): owns the Interrupt Stack Table and its dedicated
+//! stacks for exceptions that need a known-good stack.
 //!
 //! Authors: MarioS271
 
@@ -20,11 +15,8 @@ pub const DEBUG_IST_STACK_INDEX: usize = 1;
 pub const NMI_IST_STACK_INDEX: usize = 2;
 pub const MACHINE_CHECK_IST_STACK_INDEX: usize = 3;
 
-/// Owns the `TaskStateSegment` and the four IST stacks it references.
-///
-/// Stacks live inside the struct so each per-CPU `Tss` instance carries its own
-/// backing storage. The instance must not move after [`Tss::init`] is called —
-/// the TSS descriptor in the GDT holds a pointer to it.
+/// Owns the `TaskStateSegment` and its four IST stacks; must not move after
+/// [`Tss::init`] (the GDT descriptor points to it).
 pub struct Tss {
     tss: Once<TaskStateSegment>,
     ist1: AlignedStack<8192>,
@@ -46,9 +38,6 @@ impl Tss {
     }
 
     /// Build the TSS, wiring IST slots 0–3 to this instance's four dedicated stacks.
-    ///
-    /// Each stack pointer is set to the top (highest address) of its backing array,
-    /// since x86 stacks grow downward.
     pub fn init(&self) {
         // Safe: .add(len) computes a one-past-the-end pointer, which is valid per
         // Rust's pointer rules; the arrays are owned by this instance and will not

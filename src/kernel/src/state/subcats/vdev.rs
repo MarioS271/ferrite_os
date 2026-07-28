@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds state for all registered virtual (software-emulated) devices.
-///
-/// Not yet implemented; currently a placeholder in `KState`.
 pub struct VDevs {
 
 }

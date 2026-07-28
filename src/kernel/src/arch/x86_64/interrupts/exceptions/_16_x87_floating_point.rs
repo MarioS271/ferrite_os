@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! x87 floating-point exception handler (vector 16, `#MF`).
 //!
-//! Fires when an unmasked x87 FPU exception condition (divide-by-zero, overflow,
-//! underflow, precision, etc.) is detected by a subsequent floating-point or `wait`
-//! instruction. The FPU status word must be read to determine the specific cause.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

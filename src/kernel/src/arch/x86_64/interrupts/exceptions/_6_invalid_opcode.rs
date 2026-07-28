@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Invalid-opcode exception handler (vector 6, `#UD`).
 //!
-//! Fires when the CPU encounters an instruction it does not recognize, or one that
-//! is not valid in the current mode (e.g., a legacy instruction in 64-bit mode).
-//! Can also be used intentionally as a software trap via the `ud2` instruction.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

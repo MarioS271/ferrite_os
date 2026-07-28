@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! SIMD floating-point exception handler (vector 19, `#XM`/`#XF`).
 //!
-//! Fires when an unmasked SSE/SSE2/SSE3 floating-point exception occurs. The
-//! specific cause can be read from the MXCSR register's exception flags, but the
-//! kernel currently treats all cases as fatal.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

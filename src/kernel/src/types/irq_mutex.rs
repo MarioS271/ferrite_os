@@ -9,16 +9,8 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use x86_64::registers::rflags::RFlags;
 use crate::arch::instructions;
 
-/// A spinlock that saves and restores the CPU's Interrupt Flag (RFLAGS.IF).
-///
-/// When `lock()` is called, the current IF state is captured and interrupts are
-/// disabled. When the returned [`IrqMutexGuard`] is dropped, the lock is released
-/// and IF is restored to whatever it was before `lock()` was called. This prevents
-/// a deadlock that would occur if an interrupt handler tried to acquire a lock
-/// already held by the interrupted code.
-///
-/// Use this type instead of a plain spinlock anywhere that is accessed from both
-/// regular kernel code and interrupt handlers.
+/// Spinlock for data shared between normal kernel code and interrupt handlers;
+/// disables interrupts while held to avoid self-deadlock.
 pub struct IrqMutex<T> {
     data: UnsafeCell<T>,
     locked: AtomicBool,
@@ -28,7 +20,7 @@ unsafe impl<T: Send> Sync for IrqMutex<T> {}
 unsafe impl<T: Send> Send for IrqMutex<T> {}
 
 impl<T> IrqMutex<T> {
-    /// Create a new unlocked `IrqMutex` wrapping `val`. Usable in `const` context.
+    /// Create a new unlocked `IrqMutex` wrapping `val`.
     pub const fn new(val: T) -> Self {
         IrqMutex {
             data: UnsafeCell::new(val),
@@ -54,32 +46,21 @@ impl<T> IrqMutex<T> {
         IrqMutexGuard::new(self, rflags)
     }
 
-    /// Release the lock without restoring the interrupt flag.
-    ///
-    /// Intended for use in panic paths where the normal guard-based release is
-    /// unavailable because the guard is owned by the panicking call frame. Clears
-    /// the `locked` flag so that subsequent direct writes (which bypass the lock
-    /// entirely) are not blocked if the lock happens to be held at panic time.
+    /// Release the lock without restoring the interrupt flag, for use in panic paths.
     ///
     /// # Safety
-    /// Calling this while a live [`IrqMutexGuard`] still exists for this mutex
-    /// creates two concurrent accessors to the protected data. Only call from a
-    /// panic handler that will halt the CPU immediately after and never accesses
-    /// the protected data through the mutex again.
+    /// Calling this while a live [`IrqMutexGuard`] still exists creates two concurrent
+    /// accessors to the protected data. Only call from a panic handler that halts the
+    /// CPU immediately after and never touches the data through the mutex again.
     pub unsafe fn force_unlock(&self) {
         self.locked.store(false, Ordering::Release);
     }
 }
 
-/// RAII guard for [`IrqMutex`].
-///
-/// Implements [`Deref`] and [`DerefMut`] so the protected value is accessible
-/// directly through the guard. When dropped, releases the spinlock and re-enables
-/// interrupts if they were enabled at the time `lock()` was called.
+/// RAII guard for [`IrqMutex`]; releases the lock and restores the interrupt flag on drop.
 pub struct IrqMutexGuard<'g, T> {
     mutex: &'g IrqMutex<T>,
-    /// The RFLAGS value captured before `cli` was issued; IF bit determines whether
-    /// to call `sti` on drop.
+    /// RFLAGS captured before interrupts were disabled; its IF bit decides whether to re-enable on drop.
     rflags: RFlags,
 }
 

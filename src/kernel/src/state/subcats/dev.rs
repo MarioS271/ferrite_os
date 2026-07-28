@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds state for all registered physical (hardware) devices.
-///
-/// Not yet implemented; currently a placeholder in `KState`.
 pub struct Devs {
 
 }

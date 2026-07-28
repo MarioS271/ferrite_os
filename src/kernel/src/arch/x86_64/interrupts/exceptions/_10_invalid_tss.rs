@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Invalid-TSS exception handler (vector 10, `#TS`).
 //!
-//! Fires when the CPU encounters a problem loading a segment selector from the TSS
-//! — e.g., a bad limit or an invalid IST pointer. The error code is a segment
-//! selector index identifying which selector caused the fault.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

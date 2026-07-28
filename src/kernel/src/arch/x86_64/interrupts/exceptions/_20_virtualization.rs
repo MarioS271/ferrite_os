@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Virtualization exception handler (vector 20, `#VE`).
 //!
-//! Fires on Intel VMX EPT violations or on AMD virtualization events when the
-//! processor is operating as a guest and the hypervisor has configured these
-//! events to be injected. The kernel does not currently run as a VMX guest, so
-//! this exception should not occur in practice.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

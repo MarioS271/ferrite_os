@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Global Descriptor Table (GDT) initialization.
-//!
-//! The GDT tells the CPU which memory segments exist and their privilege levels.
-//! In 64-bit mode most segmentation is inactive, but the GDT is still required for:
-//! - setting the current privilege level (CPL) via the code-segment selector in CS,
-//! - telling the CPU where the TSS lives so it can find IST stacks on interrupts.
+//! Global Descriptor Table (GDT): owns the kernel segment descriptors and the TSS
+//! selector, and loads them into the CPU.
 //!
 //! Authors: MarioS271
 
@@ -14,10 +10,8 @@ use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
 use x86_64::instructions::tables::load_tss;
 use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor};
 
-/// Owns the kernel `GlobalDescriptorTable`.
-///
-/// The instance must not move after [`Gdt::init`] is called — `lgdt` records the
-/// table's address and the CPU reads it on every privilege-level transition.
+/// Owns the kernel `GlobalDescriptorTable`; must not move after [`Gdt::init`]
+/// (the CPU holds its address).
 pub struct Gdt {
     table: Once<GlobalDescriptorTable>,
 }
@@ -28,11 +22,7 @@ impl Gdt {
         Self { table: Once::new() }
     }
 
-    /// Build and load the GDT, then reload all segment registers.
-    ///
-    /// Selectors produced by appending descriptors are used immediately to reload
-    /// CS, SS, DS, ES, and the TSS register. CS cannot be set with a normal `mov`;
-    /// the x86_64 crate handles the required far-return internally in `CS::set_reg`.
+    /// Build and load the GDT, then reload the segment registers and load the TSS.
     ///
     /// # Panics
     /// Panics if [`super::tss::Tss::init`] was not called first.

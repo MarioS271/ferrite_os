@@ -6,15 +6,14 @@
 use crate::config;
 use crate::arch::tables;
 
-/// Holds per-CPU registers, local APIC state, and SMP topology.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
+/// Per-CPU descriptor tables: one TSS and GDT per CPU, plus the shared IDT.
 pub struct Cpu {
     pub tss: [tables::tss::Tss; config::MAX_CPUS],
     pub gdt: [tables::gdt::Gdt; config::MAX_CPUS],
     pub idt: tables::idt::Idt,
 }
 impl Cpu {
+    /// Construct with a default TSS and GDT for every CPU and a fresh IDT.
     pub const fn new() -> Self {
         Self {
             tss: [const { tables::tss::Tss::new() }; config::MAX_CPUS],

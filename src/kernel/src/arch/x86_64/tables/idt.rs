@@ -1,17 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Interrupt Descriptor Table (IDT) initialization.
-//!
-//! The IDT maps every interrupt vector (0–255) to a handler function. The CPU
-//! consults the IDT on every exception and hardware interrupt, so the table must
-//! remain in memory with a static lifetime — hence the [`spin::Once`] wrapper.
-//!
-//! Four exception vectors use IST entries so the CPU switches to a known-good
-//! stack before running the handler, even if the main stack is corrupt:
-//! - **Double fault** (vector 8): IST 0 — fires when a fault occurs while
-//!   handling another fault; a corrupted stack would make this unrecoverable.
-//! - **Debug** (vector 1): IST 1 — needs a clean stack to safely inspect state.
-//! - **NMI** (vector 2): IST 2 — non-maskable, can interrupt any context.
-//! - **Machine check** (vector 18): IST 3 — hardware-reported fatal error.
+//! Interrupt Descriptor Table (IDT): maps every interrupt vector to its handler
+//! and loads the table into the CPU.
 //!
 //! Authors: MarioS271
 
@@ -19,9 +8,7 @@ use crate::kinfo;
 use spin::Once;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
-/// The single kernel IDT. A `Once` is used because `InterruptDescriptorTable::load`
-/// requires the table to have a `'static` lifetime — the table must not move or
-/// be dropped after `lidt` is issued.
+/// The single kernel IDT; must not move after loading (the CPU holds its address).
 pub struct Idt {
     table: Once<InterruptDescriptorTable>
 }
@@ -34,7 +21,6 @@ impl Idt {
     }
 
     /// Build and load the IDT with all exception and IRQ handlers.
-    /// IRQ handlers start at vector 32 (the PIC master offset after remapping).
     pub fn init(&'static self) {
         self.table.call_once(|| {
             let mut idt = InterruptDescriptorTable::new();

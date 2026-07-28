@@ -1,12 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! IRQ7 handler — spurious interrupt detection.
-//!
-//! The 8259 PIC can generate a spurious IRQ7 when an IRQ is cancelled (e.g., the
-//! signal disappears before the PIC fully acknowledges it). Unlike a real IRQ7, a
-//! spurious interrupt must NOT receive an EOI — sending one would incorrectly tell
-//! the PIC that a real interrupt was handled. The handler detects spurious interrupts
-//! by reading the In-Service Register (ISR): if bit 7 is clear, the interrupt was
-//! spurious and the handler returns without sending EOI.
+//! IRQ7 handler — detects and ignores spurious PIC interrupts.
 //!
 //! Authors: MarioS271
 

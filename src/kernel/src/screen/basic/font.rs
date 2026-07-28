@@ -1,15 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! PSF2 bitmap font loading and character rendering.
 //!
-//! PSF2 (PC Screen Font version 2) is a simple binary format: a fixed-size header
-//! followed by a packed array of glyph bitmaps. Each glyph is `bytes_per_glyph`
-//! bytes wide, laid out as `height` rows of `ceil(width / 8)` bytes each. Bit 7
-//! of each byte corresponds to the leftmost pixel of that byte's group of 8.
-//!
-//! The font file is embedded at compile time via `include_bytes!`. Glyphs are
-//! indexed by Unicode codepoint; characters with a codepoint at or above
-//! `glyph_count` are silently skipped.
-//!
 //! Authors: MarioS271
 
 use crate::screen::basic::framebuffer::BasicFramebuffer;
@@ -29,8 +20,7 @@ pub struct Psf2Font {
 }
 
 impl Psf2Font {
-    /// Return the height of one glyph in pixels. Used by `kprint` to calculate
-    /// how far to advance `y` after a newline and how many rows to scroll.
+    /// Return the height of one glyph in pixels.
     pub fn glyph_height(&self) -> usize {
         self.header.height as usize
     }
@@ -47,10 +37,6 @@ struct Psf2Header {
 
 impl Psf2Font {
     /// Load and parse the built-in PSF2 font embedded in the kernel binary.
-    ///
-    /// The font file `ter-powerline-v16n.psf` is included at compile time. The
-    /// magic number in the file header is verified, and a `Psf2Header` is extracted
-    /// from fixed byte offsets as specified by the PSF2 format.
     ///
     /// # Panics
     /// Panics if the embedded file's magic number does not match [`MAGIC_NUMBER`].

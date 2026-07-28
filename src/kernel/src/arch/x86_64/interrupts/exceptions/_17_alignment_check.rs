@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Alignment-check exception handler (vector 17, `#AC`).
 //!
-//! Fires when a memory access is not aligned to its natural boundary and the
-//! CR0.AM flag is set together with EFLAGS.AC. The error code is always 0.
-//! Alignment checking is typically only enabled for user-mode code; the kernel
-//! does not currently enable it.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

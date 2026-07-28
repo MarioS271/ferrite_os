@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Security exception handler (vector 30, `#SX`, AMD SVM).
 //!
-//! AMD-specific: fired by the hypervisor to inject a security-related event into
-//! a guest (e.g., an INIT or SIPI signal). Not applicable to a bare-metal kernel
-//! that is not running as an AMD SVM guest.
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

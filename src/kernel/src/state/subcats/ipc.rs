@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds state for pipes, message queues, and shared memory regions.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Ipc {
 
 }

@@ -1,34 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Kernel heap allocator.
-//!
-//! Uses [`linked_list_allocator::LockedHeap`] as the `#[global_allocator]`, which
-//! enables `alloc` crate types (`Box`, `Vec`, `String`, etc.) anywhere in the
-//! kernel after [`init`] is called.
-//!
-//! The heap is backed by a contiguous range of virtual pages starting at
-//! `HEAP_BASE_ADDRESS`. Physical frames for those pages are allocated from the PMM
-//! at startup and mapped writable — the heap does not dynamically grow.
+//! Kernel heap allocator: a fixed-size [`linked_list_allocator::LockedHeap`] set as
+//! the `#[global_allocator]`. Does not grow after [`init`].
 //!
 //! Authors: MarioS271
 
-use crate::mem::pmm;
-use crate::mem::vmm;
+use crate::mem::pmm::{Pmm, FRAME_SIZE};
+use crate::mem::vmm::Vmm;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::VirtAddr;
 use x86_64::structures::paging::PageTableFlags;
 use linked_list_allocator::LockedHeap;
 
-/// First virtual address of the heap region. Chosen to be in the higher-half
-/// kernel address space, well above the HHDM and kernel image regions.
+/// First virtual address of the heap region (higher-half kernel space).
 static HEAP_BASE_ADDRESS: VirtAddr = VirtAddr::new(0xffff_8080_0000_0000);
 
-/// Total heap size in bytes (4 MiB). All physical frames are allocated and
-/// mapped during [`init`]; the heap does not grow after that.
+/// Total heap size in bytes (4 MiB).
 static HEAP_SIZE: usize = 0x400_000;
 
-/// The global allocator instance. Starts empty; [`init`] passes the heap region
-/// to `ALLOCATOR.lock().init(...)` to make it functional.
+/// The global allocator instance; empty until [`init`].
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 

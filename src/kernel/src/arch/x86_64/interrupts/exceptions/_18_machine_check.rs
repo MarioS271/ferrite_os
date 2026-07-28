@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Machine-check exception handler (vector 18, `#MC`).
 //!
-//! Fires when the CPU's Machine Check Architecture (MCA) detects an unrecoverable
-//! hardware error such as a memory ECC fault or bus error. Runs on IST stack 3
-//! and is always diverging (the CPU model requires a non-returning handler).
-//!
-//! **Known limitation**: `kernel_panic` acquires `IrqMutex` locks internally; an
-//! MCE can fire while any of those locks are held, potentially causing a deadlock.
-//! A future fix should bypass all locks and write directly to serial (TODO #21).
+//! Known limitation: `kernel_panic` takes `IrqMutex` locks, so an MCE fired while
+//! one is held can deadlock (TODO #21).
 //!
 //! Authors: MarioS271
 

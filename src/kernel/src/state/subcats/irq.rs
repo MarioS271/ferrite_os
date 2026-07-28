@@ -4,8 +4,6 @@
 //! Authors: MarioS271
 
 /// Holds the IRQ-to-handler routing table for dynamic IRQ registration.
-///
-/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Irq {
 
 }
