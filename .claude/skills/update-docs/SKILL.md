@@ -3,7 +3,7 @@ name: update-docs
 description: Write or update rustdoc comments in FerriteOS. Use when asked to document, add rustdoc, update docs, or fix comments.
 ---
 
-Write or update rustdoc for FerriteOS source files. Read the file first, then edit in place.
+Write or update rustdoc for FerriteOS source files. Read the file first, then edit in place. Do not commit changes — present what was changed and wait for user approval before running any `git commit`.
 
 Keep docs short and simple, but informative. Every sentence should tell the reader something they couldn't figure out from the name alone.
 
@@ -55,6 +55,8 @@ Every `.rs` file starts with the SPDX line as a standalone `//` comment on line 
 - Do not describe general concepts the reader already knows ("a page table maps virtual to physical")
 - Do not write multi-line or multi-paragraph docs for simple items
 - Do not add comments explaining WHAT code does — only WHY when non-obvious
+- Do not describe what the reader can see by scanning the code — if the doc just restates the function signatures, bullet-lists the branches, or walks through the control flow, delete it and write one sentence about the non-obvious part instead
+- Do not explain the mechanism when the outcome is enough: "prevents infinite panic re-entry" beats "set to true the first time X fires; prevents Y from looping back through Z"
 
 ## Reference examples
 
