@@ -68,6 +68,7 @@ Everything else — constants, statics, type aliases, enums, enum variants, `imp
 - Do not add comments explaining WHAT code does — only WHY when non-obvious
 - Do not describe what the reader can see by scanning the code — if the doc just restates the function signatures, bullet-lists the branches, or walks through the control flow, delete it and write one sentence about the non-obvious part instead
 - Do not explain the mechanism when the outcome is enough: "prevents infinite panic re-entry" beats "set to true the first time X fires; prevents Y from looping back through Z"
+- Do not add rustdoc to individual panic codes (`panic.rs`)
 
 ## Reference examples
 
