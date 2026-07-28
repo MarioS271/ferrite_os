@@ -14,4 +14,3 @@ AGENTS.md
 /build
 /docs
 /target
-/run/dependencies/ovmf/*
