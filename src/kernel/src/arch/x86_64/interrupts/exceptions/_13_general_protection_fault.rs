@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! General Protection Fault exception handler (vector 13).
 //!
 //! A GPF fires for a broad class of protection violations: accessing a segment
@@ -7,7 +8,6 @@
 //! fault is selector-related, or zero otherwise.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

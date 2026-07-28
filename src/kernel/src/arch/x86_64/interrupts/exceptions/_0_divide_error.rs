@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Divide-error exception handler (vector 0).
 //!
 //! Fires when the CPU executes a `div` or `idiv` instruction with a zero divisor,
 //! or when the quotient is too large for the destination register.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

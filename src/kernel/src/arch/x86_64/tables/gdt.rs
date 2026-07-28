@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Global Descriptor Table (GDT) initialization.
 //!
 //! The GDT tells the CPU which memory segments exist and their privilege levels.
@@ -6,7 +7,6 @@
 //! - telling the CPU where the TSS lives so it can find IST stacks on interrupts.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use spin::Once;
@@ -37,14 +37,11 @@ struct GdtData {
 
 /// Build and load the GDT, then reload all segment registers.
 ///
-/// Appends descriptors in this order: kernel code, kernel data, user code, user data,
-/// TSS. After calling `load()`, writes each selector into the corresponding segment
-/// register. CS must be set via a far-return or `mov`-equivalent; the x86_64 crate
-/// handles this internally in `CS::set_reg`. The TSS is activated by `load_tss`.
+/// CS cannot be set with a normal `mov`; the x86_64 crate handles the required
+/// far-return internally in `CS::set_reg`.
 ///
 /// # Panics
-/// Panics via `unwrap` if the TSS has not been initialized (i.e., `tss::init()` was
-/// not called before `gdt::init()`).
+/// Panics if `tss::init()` was not called first.
 pub fn init() {
     let mut gdt = GlobalDescriptorTable::new();
 

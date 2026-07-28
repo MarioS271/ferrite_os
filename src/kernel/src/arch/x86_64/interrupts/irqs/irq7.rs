@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! IRQ7 handler — spurious interrupt detection.
 //!
 //! The 8259 PIC can generate a spurious IRQ7 when an IRQ is cancelled (e.g., the
@@ -8,7 +9,6 @@
 //! spurious and the handler returns without sending EOI.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::arch::x86_64::interrupts::pic;
 use x86_64::instructions::port::Port;

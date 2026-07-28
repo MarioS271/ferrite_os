@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Breakpoint exception handler (vector 3, `int3`).
 //!
 //! Triggered by the `int3` instruction, typically inserted by debuggers as a
@@ -5,7 +6,6 @@
 //! resumes immediately after the `int3` instruction.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use x86_64::structures::idt::InterruptStackFrame;
 

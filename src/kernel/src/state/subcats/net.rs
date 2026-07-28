@@ -1,9 +1,11 @@
-//! state/net.rs
-//! Subcategory for KState (Network Interfaces and Sockets)
+// SPDX-License-Identifier: GPL-3.0-only
+//! Network interface and socket state placeholder for [`KState`].
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
+/// Holds registered network interfaces, routing tables, and active sockets.
+///
+/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Net {
 
 }

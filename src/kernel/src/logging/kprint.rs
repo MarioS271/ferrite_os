@@ -1,24 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Kernel print macro and unified logging output.
 //!
-//! [`kprint!`] is the primary logging interface for the kernel. It accepts the same
-//! format string syntax as `print!`. Each call goes through [`KernelWriter`], which
-//! holds an [`IrqMutexGuard`] for its entire lifetime. That guard is acquired once
-//! when the macro creates the [`KernelWriter`] via [`KernelWriter::lock`], and is
-//! held across all `write_str` fragments that [`core::fmt::write`] may issue for a
-//! single format string. This prevents an IRQ handler's `kprint!` from interleaving
-//! between fragments of an in-progress call.
-//!
-//! Each `write_str` call:
-//!
-//! 1. Appends the text to an in-memory ring buffer (`log_buf`) so the log persists
-//!    in RAM even if serial or framebuffer output was not yet ready.
-//! 2. Writes to serial (if initialized).
-//! 3. Renders to the framebuffer (if initialized), with software scrolling: when
-//!    the cursor reaches the last row, the framebuffer contents are shifted up by
-//!    one glyph height using `core::ptr::copy`, and the bottom row is cleared.
+//! [`kprint!`] is the primary logging interface for the kernel. Each call holds an
+//! [`IrqMutexGuard`] for its entire duration, preventing IRQ handlers from interleaving
+//! output mid-format. Output goes to an in-memory ring buffer, serial, and the framebuffer
+//! (with software scrolling when the cursor reaches the last row).
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::types::irq_mutex::{IrqMutex, IrqMutexGuard};
 
@@ -117,15 +105,7 @@ pub unsafe fn force_unlock_kprint_state() {
 }
 
 /// RAII handle that holds the [`KPRINT_STATE`] lock for the duration of a `kprint!` call.
-///
-/// Constructed by [`KernelWriter::lock`], which acquires [`KPRINT_STATE`] and stores
-/// the guard as a field. [`core::fmt::write`] then calls [`write_str`] one or more
-/// times on this handle; each call borrows the already-held guard rather than
-/// acquiring and releasing the lock per fragment. When the handle drops at the end
-/// of the `kprint!` macro block, the guard drops with it, releasing the lock and
-/// restoring the interrupt flag.
-///
-/// [`write_str`]: core::fmt::Write::write_str
+/// Holds the lock across all `write_str` fragments so output cannot be interleaved.
 pub struct KernelWriter {
     lock: IrqMutexGuard<'static, KernelPrintState>
 }

@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Safe wrappers around x86_64 privileged instructions.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use x86_64::instructions;
 

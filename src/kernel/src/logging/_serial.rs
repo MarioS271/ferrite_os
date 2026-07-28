@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Serial port abstraction: trait definition and port identifier enum.
 //!
 //! Separating the trait from the x86_64 implementation lets the arch module re-export
 //! the concrete type under a common path while keeping the trait as the stable interface.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 /// Interface for a serial port implementation.
 ///

@@ -1,9 +1,11 @@
-//! state/ipc.rs
-//! Subcategory for KState (Interprocess Communication: pipes, message queues, shared memory)
+// SPDX-License-Identifier: GPL-3.0-only
+//! Inter-process communication state placeholder for [`KState`].
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
+/// Holds state for pipes, message queues, and shared memory regions.
+///
+/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Ipc {
 
 }

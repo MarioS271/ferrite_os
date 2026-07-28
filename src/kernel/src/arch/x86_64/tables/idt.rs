@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Interrupt Descriptor Table (IDT) initialization.
 //!
 //! The IDT maps every interrupt vector (0–255) to a handler function. The CPU
@@ -13,7 +14,6 @@
 //! - **Machine check** (vector 18): IST 3 — hardware-reported fatal error.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use spin::Once;
@@ -37,13 +37,7 @@ const MACHINE_CHECK_IST_STACK_INDEX: u16 = 3;
 static INTERRUPT_DESCRIPTOR_TABLE: Once<InterruptDescriptorTable> = Once::new();
 
 /// Build and load the IDT with all exception and IRQ handlers.
-///
-/// Handlers for exceptions that should never fire in long mode (e.g., bound-range,
-/// vector 5) use the generic [`invalid_fault_handler`] which panics with the vector
-/// number if somehow triggered. Four handlers are assigned IST entries; all others
-/// use the default kernel stack. IRQ handlers start at vector 32 (PIC master offset).
-///
-/// [`invalid_fault_handler`]: crate::arch::x86_64::interrupts::exceptions::invalid_fault_handler
+/// IRQ handlers start at vector 32 (the PIC master offset after remapping).
 pub fn init() {
     INTERRUPT_DESCRIPTOR_TABLE.call_once(|| {
         let mut idt = InterruptDescriptorTable::new();

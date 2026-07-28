@@ -1,9 +1,7 @@
-//! arch/x86_64/interrupts/exceptions/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! x86_64 CPU exception handlers (vectors 0–30).
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
-
-//! This module contains exception handlers for all kinds of exceptions
 
 pub(crate) mod _0_divide_error;
 pub(crate) mod _1_debug;

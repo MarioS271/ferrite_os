@@ -1,9 +1,7 @@
-//! arch/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! Architecture-specific subsystems: GDT, TSS, IDT, and interrupt controllers.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
-
-//! This module contains architecture-specific things such as GDT init for x86_64
 
 #[cfg(target_arch = "x86_64")] mod x86_64;
 #[cfg(target_arch = "x86_64")] pub(crate) use x86_64::*;

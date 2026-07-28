@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Page-fault exception handler (vector 14).
 //!
 //! A page fault fires when the CPU cannot translate a virtual address: the page
@@ -5,7 +6,6 @@
 //! in a page table entry is set. The faulting virtual address is stored in CR2.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use crate::panic::kernel_panic;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Physical Memory Manager (PMM).
 //!
 //! Tracks which 4 KiB physical frames are free using a flat bitmap: one bit per
@@ -12,7 +13,6 @@
 //! operating on bad inputs cannot be corrected at runtime.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use crate::panic::kernel_panic;
@@ -50,12 +50,6 @@ unsafe impl Send for PmmData {}
 unsafe impl Sync for PmmData {}
 
 /// Initialize the PMM from the Limine memory map.
-///
-/// Scans `entries` for the highest usable physical address to determine how many
-/// frames exist, then computes how many bytes the bitmap needs. Finds the first
-/// usable region large enough to hold the bitmap and places it there. Initializes
-/// all bitmap bits to 1 (all used), then clears bits for each usable frame that is
-/// not frame 0 and not inside the bitmap itself.
 ///
 /// # Panics
 /// Panics if no single usable memory region is large enough to hold the bitmap.
@@ -154,12 +148,7 @@ pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) {
     });
 }
 
-/// Allocate one free physical frame and return its address.
-///
-/// Scans the bitmap from index 0 for the first byte that is not `0xFF` (fully
-/// used), finds the lowest zero bit within that byte, marks it as used, and
-/// returns the corresponding physical address. Returns `None` if all frames are
-/// used; also prints a warning via `kprint!`.
+/// Allocate one free physical frame and return its address, or `None` if out of memory.
 ///
 /// # Panics
 /// Panics if called before [`init`].
@@ -198,10 +187,6 @@ pub fn alloc() -> Option<PhysAddr> {
 }
 
 /// Free a previously allocated physical frame.
-///
-/// Computes the frame index from `addr`, validates it (not frame 0, not inside
-/// the bitmap, not beyond `total_frames`, and not already free), then clears the
-/// corresponding bitmap bit.
 ///
 /// # Panics
 /// Panics via [`kernel_panic`] on any of the following:

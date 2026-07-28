@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! IRQ0 handler — the 8253/8254 Programmable Interval Timer (PIT) tick.
 //!
 //! IRQ0 is wired to the PIT, which by default fires at roughly 18.2 Hz after BIOS
@@ -6,7 +7,6 @@
 //! the PIC can deliver the next timer tick.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::arch::x86_64::interrupts::pic;
 use x86_64::structures::idt::InterruptStackFrame;

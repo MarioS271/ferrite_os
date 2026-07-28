@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Virtual Memory Manager (VMM) for x86_64.
 //!
 //! Owns the kernel's PML4 page table and provides page-granularity mapping and
@@ -13,7 +14,6 @@
 //! to get its virtual address.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use super::vmm_helpers::*;
 use crate::kprint;
@@ -42,12 +42,6 @@ unsafe impl Send for VmmData {}
 unsafe impl Sync for VmmData {}
 
 /// Initialize the VMM and install a kernel-owned PML4 into CR3.
-///
-/// Reads the current PML4 from CR3 (Limine's), allocates a fresh zeroed frame
-/// for the kernel's own PML4, copies entries 256–511 (the higher-half kernel
-/// mappings) from Limine's table, then writes the new PML4's physical frame to CR3.
-/// After this call, all virtual addresses the kernel uses continue to resolve
-/// correctly through the kernel-owned page table.
 ///
 /// # Panics
 /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
@@ -96,13 +90,8 @@ pub fn get() -> &'static VmmData {
     VMM_DATA.get().unwrap()
 }
 
-/// Map one 4 KiB virtual page to a physical frame.
-///
-/// Walks the four-level page table from PML4 down to PT. At each intermediate
-/// level (PML4 → PDPT → PD), if the entry is not present, a new zeroed frame is
-/// allocated from the PMM and installed with `PRESENT | WRITABLE` flags (plus
-/// `USER_ACCESSIBLE` if the caller's `flags` include it). The P1 entry is then
-/// written with `phys` and the caller-supplied `flags` (with `PRESENT` forced on).
+/// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on in the P1 entry
+/// regardless of what `flags` contains.
 ///
 /// # Safety
 /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
@@ -139,13 +128,7 @@ pub unsafe fn map_page(virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
     entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
 }
 
-/// Unmap one 4 KiB virtual page and flush the TLB entry for it.
-///
-/// Walks the four-level page table to find the P1 entry for `virt`. If any
-/// intermediate level is not present, or if the P1 entry itself is not present,
-/// the function panics — attempting to unmap a page that was never mapped is a
-/// programming error. Sets the P1 entry to "unused" (zeroes all flags and the
-/// frame address) and issues a `invlpg` for `virt` to invalidate the TLB entry.
+/// Unmap one 4 KiB virtual page and flush its TLB entry.
 ///
 /// # Safety
 /// The caller must ensure `virt` was previously mapped and that no live code or

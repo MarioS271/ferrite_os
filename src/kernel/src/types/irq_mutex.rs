@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Interrupt-aware spinlock (`IrqMutex`).
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
@@ -36,12 +36,7 @@ impl<T> IrqMutex<T> {
         }
     }
 
-    /// Acquire the lock, disabling interrupts first.
-    ///
-    /// Reads the current RFLAGS, calls `cli` to disable interrupts, then spins in
-    /// a `compare_exchange` loop until the `locked` flag transitions from `false`
-    /// to `true`. Returns an [`IrqMutexGuard`] that releases the lock and restores
-    /// IF on drop.
+    /// Acquire the lock, disabling interrupts first. Returns a guard that restores IF on drop.
     pub fn lock(&self) -> IrqMutexGuard<'_, T> {
         let rflags = x86_64::registers::rflags::read();
         instructions::disable_interrupts();

@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Fixed-capacity formatting buffer for no-alloc contexts.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 /// A stack-allocated, fixed-size buffer that implements [`core::fmt::Write`].
 ///

@@ -1,9 +1,7 @@
-//! types/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! Shared kernel types: `IrqMutex`, `FmtBuffer`, `AlignedStack`, and panic codes.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
-
-//! This module contains data structures such as the framebuffer struct
 
 pub(crate) mod panic_codes;
 pub(crate) mod aligned_stack;

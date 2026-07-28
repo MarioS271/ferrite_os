@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Kernel entry point and early-boot global state.
 //!
 //! `kmain` is the first Rust function called by the Limine bootloader. It runs the full
@@ -5,7 +6,6 @@
 //! interrupts. Order matters because later steps depend on earlier ones being complete.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 #![no_std]
 #![no_main]
@@ -27,13 +27,8 @@ use crate::arch::instructions;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 
-/// Container for early-boot singleton resources that are not yet fully initialized
-/// when the kernel starts.
-///
-/// Each field is a [`spin::Once`], meaning it can be written exactly once and then
-/// read any number of times. This lets `kmain` initialize each resource at the right
-/// moment in the boot sequence without requiring `const`-constructible types.
-/// The `SIMPLE_STATE` global is the only instance.
+/// Early-boot singleton resources, written once in `kmain` then read-only.
+/// `SIMPLE_STATE` is the only instance.
 struct SimpleKernelState {
     /// The COM1 serial port, used for early kernel logging before the heap is available.
     serial: Once<logging::serial::Serial>,

@@ -1,7 +1,7 @@
-//! state/subcats/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! [`KState`] subcategory structs, one per OS subsystem domain.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 pub mod dev;
 pub mod vdev;

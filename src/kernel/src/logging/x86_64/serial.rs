@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! x86_64 UART serial port implementation of [`_Serial`].
 //!
 //! Programs a 16550-compatible UART using the standard IBM PC I/O port layout.
@@ -9,7 +10,6 @@
 //! (Transmitter Empty) in a spin loop before writing each byte to the data register.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::sync::atomic::{AtomicBool, Ordering};
 use x86_64::instructions::port::Port;

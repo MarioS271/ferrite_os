@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Stack-segment fault exception handler (vector 12, `#SS`).
 //!
 //! Fires on stack-related violations: loading SS with a non-present descriptor,
@@ -5,7 +6,6 @@
 //! the SS segment selector index, or 0 for a limit violation.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

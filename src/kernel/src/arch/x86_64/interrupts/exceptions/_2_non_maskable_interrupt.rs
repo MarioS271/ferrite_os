@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Non-Maskable Interrupt (NMI) handler (vector 2).
 //!
 //! An NMI cannot be masked by the CPU's IF flag and typically indicates a hardware
@@ -6,7 +7,6 @@
 //! treated as a fatal hardware failure.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

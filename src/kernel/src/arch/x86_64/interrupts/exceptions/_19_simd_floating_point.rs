@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! SIMD floating-point exception handler (vector 19, `#XM`/`#XF`).
 //!
 //! Fires when an unmasked SSE/SSE2/SSE3 floating-point exception occurs. The
@@ -5,7 +6,6 @@
 //! kernel currently treats all cases as fatal.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

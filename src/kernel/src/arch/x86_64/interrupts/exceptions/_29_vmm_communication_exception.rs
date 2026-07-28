@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! VMM communication exception handler (vector 29, `#VC`, AMD SVM).
 //!
 //! AMD-specific: fires when a SEV-ES (Secure Encrypted Virtualization - Encrypted
@@ -5,7 +6,6 @@
 //! non-SEV kernel, so treated as a fatal exception.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

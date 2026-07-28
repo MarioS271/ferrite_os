@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Segment-not-present exception handler (vector 11, `#NP`).
 //!
 //! Fires when the CPU tries to load a segment register from a descriptor whose
@@ -5,7 +6,6 @@
 //! offending descriptor.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

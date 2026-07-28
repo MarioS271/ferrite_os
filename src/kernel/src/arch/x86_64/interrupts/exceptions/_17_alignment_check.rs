@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Alignment-check exception handler (vector 17, `#AC`).
 //!
 //! Fires when a memory access is not aligned to its natural boundary and the
@@ -6,7 +7,6 @@
 //! does not currently enable it.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

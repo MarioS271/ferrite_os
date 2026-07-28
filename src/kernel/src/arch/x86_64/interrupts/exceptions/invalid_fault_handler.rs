@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Generic handler for interrupt vectors that cannot legally fire in 64-bit long mode.
 //!
 //! Certain x86 exception vectors (e.g., #5 bound-range exceeded, #9 coprocessor
@@ -6,7 +7,6 @@
 //! or a CPU errata — it produces a diagnostic panic rather than jumping to address 0.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

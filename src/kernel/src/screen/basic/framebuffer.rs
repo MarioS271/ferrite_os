@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Linear framebuffer wrapper for early-boot screen output.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 // Safe: kernel is single-threaded during early boot; raw pointer access is guarded by Once
 unsafe impl Send for BasicFramebuffer {}

@@ -1,9 +1,7 @@
-//! mem/x86_64/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! x86_64 memory backend: four-level page table VMM and helper utilities.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
-
-//! This module contains memory related stuff such as the virtual memory manager
 
 pub(crate) mod vmm;
 mod vmm_helpers;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Task State Segment (TSS) initialization.
 //!
 //! The TSS holds the Interrupt Stack Table (IST): an array of up to 7 stack
@@ -7,7 +8,6 @@
 //! guaranteed-valid stack this way.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::kprint;
 use crate::types::aligned_stack::AlignedStack;
@@ -33,14 +33,10 @@ static IST3_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 /// 8 KiB stack for IST slot 3 (machine-check handler).
 static IST4_STACK: AlignedStack<8192> = AlignedStack{ array: [0u8; 8192] };
 
-/// Allocate IST stacks and initialize the TSS.
+/// Initialize the TSS, wiring up IST slots 0–3 to the four dedicated stacks.
 ///
-/// Computes the top address of each IST stack array (stacks grow downward, so the
-/// CPU needs the highest address) and stores them in `interrupt_stack_table[0..3]`.
-/// The TSS is then stored in `TASK_STATE_SEGMENT` via `call_once`.
-///
-/// Safety: accesses `static mut` stack arrays, which is safe here because the
-/// kernel is still single-threaded at this point in `kmain`.
+/// Each stack pointer is set to the array's top (highest address), since x86 stacks
+/// grow downward.
 pub fn init() {
     // Safe because we are still single threaded at this point
     unsafe {

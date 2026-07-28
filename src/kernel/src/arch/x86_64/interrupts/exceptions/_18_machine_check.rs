@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Machine-check exception handler (vector 18, `#MC`).
 //!
 //! Fires when the CPU's Machine Check Architecture (MCA) detects an unrecoverable
@@ -9,7 +10,6 @@
 //! A future fix should bypass all locks and write directly to serial (TODO #21).
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

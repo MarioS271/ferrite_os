@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Overflow trap handler (vector 4, `into` instruction).
 //!
 //! Fires when the `into` instruction is executed and the overflow flag (OF) is set.
@@ -5,7 +6,6 @@
 //! handler exists for completeness.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Panic codes for classifying kernel panics.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 /// Numeric classification of the reason for a kernel panic.
 ///

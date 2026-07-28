@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! 8259 Programmable Interrupt Controller (PIC) initialization and EOI signaling.
 //!
 //! The PC's legacy 8259 PIC delivers hardware IRQs to the CPU. By default the BIOS
@@ -11,7 +12,6 @@
 //! lines.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use pic8259;
 use crate::types::irq_mutex::IrqMutex;

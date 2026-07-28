@@ -1,9 +1,7 @@
-//! arch/x86_64/interrupts/mod.rs
+// SPDX-License-Identifier: GPL-3.0-only
+//! x86_64 interrupt infrastructure: exception handlers, IRQ handlers, and PIC initialization.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
-
-//! This module contains definitions and code for the PIC/APIC (Interrups Controllers)
 
 pub(crate) mod exceptions;
 pub(crate) mod irqs;

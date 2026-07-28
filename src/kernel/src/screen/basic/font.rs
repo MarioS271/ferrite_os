@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! PSF2 bitmap font loading and character rendering.
 //!
 //! PSF2 (PC Screen Font version 2) is a simple binary format: a fixed-size header
@@ -10,7 +11,6 @@
 //! `glyph_count` are silently skipped.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::screen::basic::framebuffer::BasicFramebuffer;
 
@@ -68,9 +68,6 @@ impl Psf2Font {
     }
 
     /// Return the raw glyph bytes for character `c`, or `None` if `c` has no glyph.
-    ///
-    /// Looks up `c as usize` in the glyph array. Returns a slice of exactly
-    /// `bytes_per_glyph` bytes starting at `header_size + char_index * bytes_per_glyph`.
     fn parse_char(&self, c: char) -> Option<&'static [u8]> {
         let char_index = c as usize;
 
@@ -85,14 +82,8 @@ impl Psf2Font {
 
     /// Render one character into the framebuffer at pixel position `(x, y)`.
     ///
-    /// For each pixel in the glyph bitmap: extracts the bit at column `col` of row
-    /// `row` by reading `glyph[row * row_stride + col / 8]` and checking bit
-    /// `7 - (col % 8)`. Writes `font_color` (or `DEFAULT_FOREGROUND_COLOR` if
-    /// `None`) for set bits and `BACKGROUND_COLOR` for clear bits.
-    ///
-    /// Returns the x position immediately after the drawn glyph so callers can chain
-    /// calls without tracking width manually. Returns the original `x` unchanged if
-    /// the character has no glyph or if it would be drawn out of the framebuffer bounds.
+    /// Returns the x position immediately after the glyph, or the original `x` if the
+    /// character has no glyph or falls outside the framebuffer bounds.
     pub fn draw_char(&self, fb: &BasicFramebuffer, c: char, x: usize, y: usize, font_color: Option<u32>) -> usize {
         let Some(glyph) = self.parse_char(c) else { return x; };
 
@@ -127,12 +118,8 @@ impl Psf2Font {
         x + self.header.width as usize
     }
 
-    /// Render a string into the framebuffer, advancing the cursor after each character.
-    ///
-    /// `x` and `y` are updated in place: each character advances `*x` by the glyph
-    /// width (via the return value of `draw_char`). A `'\n'` character resets `*x` to
-    /// 0 and advances `*y` by the glyph height. `font_color` is passed through to
-    /// each `draw_char` call unchanged.
+    /// Render a string into the framebuffer, advancing `*x`/`*y` after each character.
+    /// `'\n'` wraps to the next line.
     pub fn draw_string(&self, fb: &BasicFramebuffer, string: &str, x: &mut usize, y: &mut usize, font_color: Option<u32>) {
         for c in string.chars() {
             if c == '\n' {

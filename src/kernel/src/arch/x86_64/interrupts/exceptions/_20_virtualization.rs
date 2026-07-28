@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Virtualization exception handler (vector 20, `#VE`).
 //!
 //! Fires on Intel VMX EPT violations or on AMD virtualization events when the
@@ -6,7 +7,6 @@
 //! this exception should not occur in practice.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

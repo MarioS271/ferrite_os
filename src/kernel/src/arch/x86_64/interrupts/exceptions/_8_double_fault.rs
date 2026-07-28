@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Double-fault exception handler (vector 8).
 //!
 //! A double fault fires when a second exception occurs while the CPU is trying
@@ -7,7 +8,6 @@
 //! the main stack is corrupt.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Device-not-available exception handler (vector 7, `#NM`).
 //!
 //! Fires when an FPU or SSE instruction is executed while the CR0.TS (Task Switched)
@@ -6,7 +7,6 @@
 //! only on unexpected conditions.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

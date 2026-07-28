@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Kernel heap allocator.
 //!
 //! Uses [`linked_list_allocator::LockedHeap`] as the `#[global_allocator]`, which
@@ -9,7 +10,6 @@
 //! at startup and mapped writable — the heap does not dynamically grow.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use crate::mem::pmm;
 use crate::mem::vmm;
@@ -34,14 +34,8 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 /// Map the heap virtual address range to physical frames and initialize the allocator.
 ///
-/// Iterates over `HEAP_SIZE / FRAME_SIZE` pages, allocates one physical frame per
-/// page from the PMM, and maps each page at `HEAP_BASE_ADDRESS + page_index * FRAME_SIZE`
-/// with `PRESENT | WRITABLE` flags. After all pages are mapped, calls
-/// `ALLOCATOR.lock().init(...)` to inform `linked_list_allocator` of the usable region.
-///
 /// # Panics
-/// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame
-/// allocation during setup.
+/// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
 pub fn init() {
     unsafe {
         for page in 0..(HEAP_SIZE / pmm::FRAME_SIZE as usize) {

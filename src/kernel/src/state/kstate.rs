@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Central kernel state aggregate (`KState`).
 //!
 //! `KState` groups every OS subsystem's state into a single static structure so
@@ -8,7 +9,6 @@
 //! Access the global instance via [`KState::get`], which returns a `&'static KState`.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use super::subcats::dev::Devs;
 use super::subcats::vdev::VDevs;

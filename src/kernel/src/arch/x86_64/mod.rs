@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! x86_64-specific kernel subsystems: GDT, TSS, IDT, PIC, and interrupt handlers.
 //!
 //! Call [`init`] once from `kmain` after serial and framebuffer are ready but before
@@ -6,7 +7,6 @@
 //! be loaded before `sti` is issued.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 pub(crate) mod instructions;
 mod interrupts;

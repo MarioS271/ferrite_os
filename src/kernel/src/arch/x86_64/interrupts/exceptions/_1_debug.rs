@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Debug exception handler (vector 1).
 //!
 //! Fires when a hardware breakpoint or single-step condition is triggered. Currently
@@ -6,7 +7,6 @@
 //! the breakpoint site does not prevent the handler from running.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use x86_64::structures::idt::InterruptStackFrame;
 

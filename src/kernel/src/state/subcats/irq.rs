@@ -1,9 +1,11 @@
-//! state/irq.rs
-//! Subcategory for KState (IRQ Routing Table)
+// SPDX-License-Identifier: GPL-3.0-only
+//! IRQ routing table placeholder for [`KState`].
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
+/// Holds the IRQ-to-handler routing table for dynamic IRQ registration.
+///
+/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Irq {
 
 }

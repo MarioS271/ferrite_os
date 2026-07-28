@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! 16-byte-aligned stack backing storage.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 /// A `N`-byte array guaranteed to start on a 16-byte boundary.
 ///

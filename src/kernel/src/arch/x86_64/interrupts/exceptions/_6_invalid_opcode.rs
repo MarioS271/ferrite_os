@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Invalid-opcode exception handler (vector 6, `#UD`).
 //!
 //! Fires when the CPU encounters an instruction it does not recognize, or one that
@@ -5,7 +6,6 @@
 //! Can also be used intentionally as a software trap via the `ud2` instruction.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;

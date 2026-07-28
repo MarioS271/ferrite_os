@@ -1,9 +1,11 @@
-//! state/time.rs
-//! Subcategory for KState (System Clock, Timers, Uptime)
+// SPDX-License-Identifier: GPL-3.0-only
+//! System clock, timer, and uptime state placeholder for [`KState`].
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
+/// Holds the system clock source, active timer list, and kernel uptime counter.
+///
+/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Time {
 
 }

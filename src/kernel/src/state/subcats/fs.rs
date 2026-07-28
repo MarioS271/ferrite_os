@@ -1,9 +1,11 @@
-//! state/fs.rs
-//! Subcategory for KState (Filesystem Driver Registry)
+// SPDX-License-Identifier: GPL-3.0-only
+//! Virtual filesystem state placeholder for [`KState`].
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
+/// Holds the virtual filesystem layer state and registered filesystem drivers.
+///
+/// Not yet implemented; currently a placeholder in [`KState`].
 pub struct Fs {
 
 }

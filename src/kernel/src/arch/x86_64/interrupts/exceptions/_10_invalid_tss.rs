@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 //! Invalid-TSS exception handler (vector 10, `#TS`).
 //!
 //! Fires when the CPU encounters a problem loading a segment selector from the TSS
@@ -5,7 +6,6 @@
 //! selector index identifying which selector caused the fault.
 //!
 //! Authors: MarioS271
-//! SPDX-License-Identifier: GPL-3.0-only
 
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;
