@@ -1,8 +1,14 @@
 //! Kernel print macro and unified logging output.
 //!
 //! [`kprint!`] is the primary logging interface for the kernel. It accepts the same
-//! format string syntax as `print!`. Each call goes through [`KernelWriter`] which
-//! calls the private `kprint` function. That function:
+//! format string syntax as `print!`. Each call goes through [`KernelWriter`], which
+//! holds an [`IrqMutexGuard`] for its entire lifetime. That guard is acquired once
+//! when the macro creates the [`KernelWriter`] via [`KernelWriter::lock`], and is
+//! held across all `write_str` fragments that [`core::fmt::write`] may issue for a
+//! single format string. This prevents an IRQ handler's `kprint!` from interleaving
+//! between fragments of an in-progress call.
+//!
+//! Each `write_str` call:
 //!
 //! 1. Appends the text to an in-memory ring buffer (`log_buf`) so the log persists
 //!    in RAM even if serial or framebuffer output was not yet ready.
@@ -11,13 +17,10 @@
 //!    the cursor reaches the last row, the framebuffer contents are shifted up by
 //!    one glyph height using `core::ptr::copy`, and the bottom row is cleared.
 //!
-//! The entire operation is protected by [`KPRINT_STATE`]'s [`IrqMutex`], so
-//! `kprint!` is safe to call from interrupt handlers.
-//!
 //! Authors: MarioS271
 //! SPDX-License-Identifier: GPL-3.0-only
 
-use crate::types::irq_mutex::IrqMutex;
+use crate::types::irq_mutex::{IrqMutex, IrqMutexGuard};
 
 /// Capacity of the in-memory log ring buffer in bytes.
 const LOG_BUFFER_SIZE: usize = u16::MAX as usize;
@@ -55,12 +58,10 @@ fn write_log_buf(state: &mut KernelPrintState, s: &str) {
     }
 }
 
-fn kprint(string: &str) {
+fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str) {
     use crate::SIMPLE_STATE;
 
-    let mut state = KPRINT_STATE.lock();
-
-    write_log_buf(&mut state, string);
+    write_log_buf(state, string);
 
     if SIMPLE_STATE.serial.is_completed() {
         use crate::logging::_serial::_Serial;
@@ -74,12 +75,12 @@ fn kprint(string: &str) {
         let fb = basic_fb.get().unwrap();
         let font = basic_fb_psf2_font.get().unwrap();
 
-        let s = &mut *state;
+        let s = &mut **state;
         font.draw_string(fb, string, &mut s.cursor_x, &mut s.cursor_y, None);
 
         let last_row = fb.height as usize - font.glyph_height();
-        if state.cursor_y > last_row {
-            state.cursor_y = last_row;
+        if s.cursor_y > last_row {
+            s.cursor_y = last_row;
 
             // Safe: src and dst are within framebuffer bounds, counts derived from fb dimensions
             unsafe {
@@ -101,14 +102,31 @@ fn kprint(string: &str) {
     }
 }
 
-/// Zero-sized type that implements [`core::fmt::Write`] by forwarding to `kprint`.
+/// RAII handle that holds the [`KPRINT_STATE`] lock for the duration of a `kprint!` call.
 ///
-/// Used by the [`kprint!`] macro: `core::fmt::write` takes a `&mut dyn Write`
-/// and calls `write_str` one or more times with formatted fragments.
-pub struct KernelWriter;
+/// Constructed by [`KernelWriter::lock`], which acquires [`KPRINT_STATE`] and stores
+/// the guard as a field. [`core::fmt::write`] then calls [`write_str`] one or more
+/// times on this handle; each call borrows the already-held guard rather than
+/// acquiring and releasing the lock per fragment. When the handle drops at the end
+/// of the `kprint!` macro block, the guard drops with it, releasing the lock and
+/// restoring the interrupt flag.
+///
+/// [`write_str`]: core::fmt::Write::write_str
+pub struct KernelWriter {
+    lock: IrqMutexGuard<'static, KernelPrintState>
+}
+impl KernelWriter {
+    /// Acquire [`KPRINT_STATE`] and return a [`KernelWriter`] that holds the guard.
+    ///
+    /// Disables interrupts for the duration of the returned handle's lifetime.
+    /// Called once per `kprint!` invocation; do not call directly.
+    pub fn lock() -> Self {
+        Self { lock: KPRINT_STATE.lock() }
+    }
+}
 impl core::fmt::Write for KernelWriter {
     fn write_str(&mut self, string: &str) -> core::fmt::Result {
-        kprint(string);
+        kprint(&mut self.lock, string);
         Ok(())
     }
 }
@@ -128,7 +146,7 @@ impl core::fmt::Write for KernelWriter {
 macro_rules! kprint {
     ($($arg:tt)*) => ({
         let _ = core::fmt::write(
-            &mut $crate::logging::kprint::KernelWriter,
+            &mut $crate::logging::kprint::KernelWriter::lock(),
             format_args!($($arg)*)
         );
     });
