@@ -35,9 +35,12 @@ use crate::types::panic_codes::PanicCode;
 /// moment in the boot sequence without requiring `const`-constructible types.
 /// The `SIMPLE_STATE` global is the only instance.
 struct SimpleKernelState {
-    serial: Once<logging::serial::Serial>,                               /// The COM1 serial port, used for early kernel logging before the heap is available.
-    basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,        /// The Limine-provided linear framebuffer, used for on-screen text output.
-    basic_fb_psf2_font: Once<screen::basic::font::Psf2Font>,             /// The PSF2 bitmap font used to render characters into `basic_fb`.
+    /// The COM1 serial port, used for early kernel logging before the heap is available.
+    serial: Once<logging::serial::Serial>,
+    /// The Limine-provided linear framebuffer, used for on-screen text output.
+    basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,
+    /// The PSF2 bitmap font used to render characters into `basic_fb`.
+    basic_fb_psf2_font: Once<screen::basic::font::Psf2Font>,
 }
 
 /// Limine bootloader request for the linear framebuffer.
