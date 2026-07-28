@@ -110,20 +110,21 @@ extern "C" fn kmain() -> ! {
     kinfo!("Hello, FerriteOS!");
     kdebug!("Debug logging is active!");
 
-
     // Init arch-specific features (GDT, IDT for x86_64, ...)
     arch::init();
 
-    // Init physical mem manager
-    if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
-        if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
-            mem::pmm::init(memmap_response.entries(), hhdm_response.offset);
-            mem::vmm::init(hhdm_response.offset);
+    {
+        // Init physical + virtual mem manager
+        if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
+            if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
+                SIMPLE_STATE.pmm.call_once(|| mem::pmm::Pmm::init(memmap_response.entries(), hhdm_response.offset) );
+                SIMPLE_STATE.vmm.call_once(|| mem::vmm::Vmm::init(SIMPLE_STATE.pmm.get().unwrap(), hhdm_response.offset));
+            }
         }
     }
 
     // Init heap allocator
-    mem::heap::init();
+    mem::heap::init(SIMPLE_STATE.pmm.get().unwrap(), SIMPLE_STATE.vmm.get().unwrap());
 
     instructions::enable_interrupts();
 
