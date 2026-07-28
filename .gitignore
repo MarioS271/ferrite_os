@@ -3,8 +3,10 @@
 .vscode
 
 # AI Editors
-.claude
+.claude/*
+!.claude/skills
 .antigravitycli
+.codex
 CLAUDE.md
 AGENTS.md
 
