@@ -9,7 +9,7 @@ Copyright:
     SPDX-License-Identifier: GPL-3.0-only
 
 Description:
-    Build script for ferrite_os — Rust x86-64 bare metal OS.
+    Build script for ferrite_os — Rust x86_64 bare metal OS.
     Compilation + ISO creation runs inside Docker.
     QEMU runs natively on the host (Windows, Linux, macOS).
 
@@ -31,7 +31,7 @@ from pathlib import Path
 
 # ─── config ───────────────────────────────────────────────────────────────────
 
-ROOT  = Path(__file__).parent.parent
+ROOT  = Path(__file__).parent.parent.parent
 BUILD = ROOT / "build"
 
 ISO   = BUILD / "ferrite_os.iso"
@@ -41,8 +41,8 @@ CACHE = BUILD / ".build_cache.json"
 # (target/ lives in a docker volume — it is not visible on the host)
 KERNEL_ELF_CONTAINER = "/ferrite_os/target/x86_64-unknown-none/debug/kernel"
 
-# Path to the OVMF dependencies
-OVMF_DIR    = ROOT / "run" / "dependencies" / "ovmf"
+# Path to the OVMF deps
+OVMF_DIR    = ROOT / "run" / "deps" / "ovmf"
 OVMF_CODE   = OVMF_DIR / "code.fd"
 OVMF_VARS   = OVMF_DIR / "vars.fd"
 
@@ -63,7 +63,7 @@ def load_config() -> dict:
     without a global PATH entry. Elsewhere it is optional, so a missing file
     is not an error.
     """
-    cfg_path = ROOT / "run" / "configs" / "build.toml"
+    cfg_path = ROOT / "run" / "config" / "build.toml"
     if not cfg_path.exists():
         return {}
     try:
@@ -133,7 +133,7 @@ def check_dependencies():
         for m in missing:
             print(f"  ✗ {m}")
         print("\n  On Windows you can list the install dirs in")
-        print("  run/configs/build.toml instead of the global PATH:")
+        print("  run/config/build.toml instead of the global PATH:")
         print("")
         print("    [extra_paths]")
         print("    paths = [")
@@ -156,7 +156,7 @@ def check_ovmf():
     if not ok:
         print("\n  Download OVMF from:")
         print("  https://github.com/rust-osdev/ovmf-prebuilt/releases")
-        print("  Place code.fd and vars.fd in run/dependencies/ovmf/")
+        print("  Place code.fd and vars.fd in run/deps/ovmf/")
         sys.exit(1)
 
 def list_config_vars():
@@ -254,12 +254,12 @@ def do_build():
 
     # 3. Copy kernel ELF into ISO root
     run_in_container(
-        f"cp {KERNEL_ELF_CONTAINER} /ferrite_os/build/iso/kernel"
+        f"cp {KERNEL_ELF_CONTAINER} /ferrite_os/build/iso/ferrite"
     )
 
     # 4. Copy Limine config (strip CRLF so Limine can parse it)
     run_in_container(
-        "sed 's/\\r//' /ferrite_os/run/configs/limine.conf "
+        "sed 's/\\r//' /ferrite_os/run/config/limine.conf "
         "> /ferrite_os/build/iso/boot/limine/limine.conf"
     )
 

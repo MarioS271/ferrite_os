@@ -60,7 +60,7 @@ def load_config() -> dict:
     without a global PATH entry. Everywhere else it's optional, so a missing
     file is not an error here — unlike in build.py.
     """
-    cfg_path = ROOT / "run" / "configs" / "build.toml"
+    cfg_path = ROOT / "run" / "config" / "build.toml"
     if not cfg_path.exists():
         return {}
     try:
@@ -112,7 +112,7 @@ def check_dependencies():
         for m in missing:
             print(f"  ✗ {m}")
         print("\n  On Windows you can add the install dir to")
-        print("  run/configs/build.toml instead of the global PATH:")
+        print("  run/config/build.toml instead of the global PATH:")
         print("")
         print("    [extra_paths]")
         print("    paths = [\"C:/Program Files/Docker/Docker/resources/bin\"]")
@@ -206,24 +206,11 @@ def open_docs():
 
 def clean():
     banner("Cleaning Docs")
-    try:
-        entries = DOCS_MANIFEST.read_text().split()
-    except FileNotFoundError:
+    if not DOCS_DIR.exists():
         print("  Nothing to clean")
         return
-
-    for name in entries:
-        target = DOCS_DIR / name
-        if target.exists():
-            remove(target)
-            print(f"  ✓ Deleted {target}")
-
-    DOCS_MANIFEST.unlink()
-
-    # Drop docs/ entirely if nothing hand-written was left behind
-    if not any(DOCS_DIR.iterdir()):
-        DOCS_DIR.rmdir()
-        print(f"  ✓ Deleted {DOCS_DIR}")
+    shutil.rmtree(DOCS_DIR)
+    print(f"  ✓ Deleted {DOCS_DIR}")
 
 # ─── commands ─────────────────────────────────────────────────────────────────
 
