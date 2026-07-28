@@ -1,3 +1,9 @@
+[options]
+profile = "debug"
+
+[features]
+debug-logging = true
+
 [extra_paths]
 paths = [
     "C:/Program Files/qemu",

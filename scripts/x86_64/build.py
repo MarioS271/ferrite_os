@@ -37,10 +37,6 @@ BUILD = ROOT / "build"
 ISO   = BUILD / "ferrite_os.iso"
 CACHE = BUILD / ".build_cache.json"
 
-# Path to the kernel ELF *inside the container*
-# (target/ lives in a docker volume — it is not visible on the host)
-KERNEL_ELF_CONTAINER = "/ferrite_os/target/x86_64-unknown-none/debug/kernel"
-
 # Path to the OVMF deps
 OVMF_DIR    = ROOT / "run" / "deps" / "ovmf"
 OVMF_CODE   = OVMF_DIR / "code.fd"
@@ -76,9 +72,53 @@ def load_config() -> dict:
 _CFG        = load_config()
 EXTRA_PATHS = _CFG.get("extra_paths", {}).get("paths", [])
 
+def options_error(reason: str):
+    """Print why the [options] config is unusable, suggest a default, and exit."""
+    print(f"  ✗ {reason}")
+    print("\n  Add a valid [options] section to run/config/build.toml:")
+    print("")
+    print("    [options]")
+    print("    profile = \"debug\"    # \"debug\" or \"release\"")
+    print("")
+    print("    [features]")
+    print("    debug-logging = true  # set false to omit the --features flag")
+    sys.exit(1)
+
+def load_options(cfg: dict) -> str:
+    """Read [options].profile. Errors on absence or invalid value."""
+    options = cfg.get("options")
+    if options is None:
+        options_error("No [options] section in build.toml")
+
+    profile = options.get("profile")
+    if profile is None:
+        options_error("[options].profile is missing")
+    if profile not in ("debug", "release"):
+        options_error(f"[options].profile must be \"debug\" or \"release\", got {profile!r}")
+
+    return profile
+
+def load_features(cfg: dict) -> list:
+    """Read [features] and return names where the value is true. Missing section = no features."""
+    section = cfg.get("features", {})
+    if not isinstance(section, dict):
+        options_error("[features] must be a TOML table of feature-name = true/false pairs")
+    bad = {k: v for k, v in section.items() if not isinstance(v, bool)}
+    if bad:
+        options_error(f"[features] values must be true or false, got: {bad}")
+    return [name for name, enabled in section.items() if enabled]
+
+PROFILE  = load_options(_CFG)
+FEATURES = load_features(_CFG)
+
+# Path to the kernel ELF *inside the container*
+# (target/ lives in a docker volume — it is not visible on the host)
+# The profile ("debug" / "release") selects the cargo output subdirectory.
+KERNEL_ELF_CONTAINER = f"/ferrite_os/target/x86_64-unknown-none/{PROFILE}/kernel"
+
 def tracked_sources() -> list:
     """Source files whose contents decide whether a rebuild is needed."""
-    patterns = ("*.rs", "Cargo.toml", "*.ld", "*.conf", "*.cfg", "config.toml")
+    patterns = ("*.rs", "*.toml", "*.ld", "*.conf", "*.cfg")
     found = set()
     for pattern in patterns:
         for f in ROOT.rglob(pattern):
@@ -171,6 +211,8 @@ def list_config_vars():
     for name, value in vars.items():
         exists = "✓" if Path(str(value)).exists() else "✗"
         print(f"  {exists} {name} = {value}")
+    print(f"    profile  = {PROFILE}")
+    print(f"    features = {FEATURES}")
 
 # ─── cache ────────────────────────────────────────────────────────────────────
 
@@ -240,11 +282,16 @@ def do_build():
     ensure_container_running()
 
     # 1. Compile the kernel ELF
-    run_in_container(
+    cargo_cmd = (
         "cd /ferrite_os && "
         "cargo build --target x86_64-unknown-none "
         "--manifest-path src/kernel/Cargo.toml"
     )
+    if PROFILE == "release":
+        cargo_cmd += " --release"
+    if FEATURES:
+        cargo_cmd += " --features " + ",".join(FEATURES)
+    run_in_container(cargo_cmd)
 
     # 2. Create ISO directory structure inside the container
     run_in_container(
@@ -348,13 +395,17 @@ def clean():
     banner("Cleaning Build")
     removed = False
 
-    # target/ is a docker volume, so it has to be cleaned inside the container
+    # Build artifacts live in the target_cache volume, reachable only from inside
+    # the container — clear its contents there (the volume is mounted at
+    # /ferrite_os/target; -mindepth 1 empties it without removing the mount point).
     if container_running():
-        run_in_container("cd /ferrite_os && cargo clean")
+        run_in_container("find /ferrite_os/target -mindepth 1 -delete")
         removed = True
     else:
-        print(f"  Container '{CONTAINER_NAME}' not running — skipping cargo clean")
+        print(f"  Container '{CONTAINER_NAME}' not running — skipping volume cleanup")
 
+    # Host-side directories: build/ is a plain host folder; target/ is a leftover
+    # from any host-side cargo builds. Both are ordinary Windows directories.
     for d in [BUILD, ROOT / "target"]:
         if d.exists():
             rmtree(d)
