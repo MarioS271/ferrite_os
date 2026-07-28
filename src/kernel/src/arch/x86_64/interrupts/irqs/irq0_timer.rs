@@ -5,12 +5,10 @@
 
 use crate::arch::x86_64::interrupts::pic;
 use x86_64::structures::idt::InterruptStackFrame;
-use crate::kprint;
 
 /// Acknowledge the timer tick and send EOI to the master PIC.
 pub extern "x86-interrupt" fn handler(
     _: InterruptStackFrame
 ) {
-    kprint!("a");
     pic::end_of_interrupt(pic::PIC_MASTER_OFFSET + 0);
 }
