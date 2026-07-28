@@ -12,65 +12,52 @@ use crate::kprint;
 use spin::Once;
 use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
 use x86_64::instructions::tables::load_tss;
-use x86_64::structures::gdt::{GlobalDescriptorTable, SegmentSelector, Descriptor};
+use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor};
 
-/// Global static holding both the GDT and the selectors returned when descriptors
-/// were appended to it. Selectors must remain valid for the lifetime of the GDT,
-/// so they are stored together in a single `Once`-initialized bundle.
-static GLOBAL_DESCRIPTOR_TABLE: Once<GdtData> = Once::new();
-
-/// Bundles the [`GlobalDescriptorTable`] with all selectors produced by appending
-/// descriptors to it, so the selectors stay alive as long as the table does.
-struct GdtData {
-    global_descriptor_table: GlobalDescriptorTable,
-    /// Selector for the kernel-mode code segment; loaded into CS.
-    code_selector: SegmentSelector,
-    /// Selector for the kernel-mode data segment; loaded into SS, DS, and ES.
-    data_selector: SegmentSelector,
-    /// Selector for the user-mode code segment (ring 3); reserved for future use.
-    user_code_selector: SegmentSelector,
-    /// Selector for the user-mode data segment (ring 3); reserved for future use.
-    user_data_selector: SegmentSelector,
-    /// Selector for the TSS descriptor; loaded via `ltr` so the CPU knows the TSS.
-    tss_selector: SegmentSelector,
+/// Owns the kernel `GlobalDescriptorTable`.
+///
+/// The instance must not move after [`Gdt::init`] is called — `lgdt` records the
+/// table's address and the CPU reads it on every privilege-level transition.
+pub struct Gdt {
+    table: Once<GlobalDescriptorTable>,
 }
 
-/// Build and load the GDT, then reload all segment registers.
-///
-/// CS cannot be set with a normal `mov`; the x86_64 crate handles the required
-/// far-return internally in `CS::set_reg`.
-///
-/// # Panics
-/// Panics if `tss::init()` was not called first.
-pub fn init() {
-    let mut gdt = GlobalDescriptorTable::new();
-
-    let code = gdt.append(Descriptor::kernel_code_segment());
-    let data = gdt.append(Descriptor::kernel_data_segment());
-    let ucode = gdt.append(Descriptor::user_code_segment());
-    let udata = gdt.append(Descriptor::user_data_segment());
-    let tss = gdt.append(Descriptor::tss_segment(&super::tss::TASK_STATE_SEGMENT.get().unwrap()));
-
-    let gdt_data = GLOBAL_DESCRIPTOR_TABLE.call_once(|| GdtData{
-        global_descriptor_table: gdt,
-        code_selector: code,
-        data_selector: data,
-        user_code_selector: ucode,
-        user_data_selector: udata,
-        tss_selector: tss,
-    });
-
-    gdt_data.global_descriptor_table.load();
-
-    // Safe because the GDT is a valid and initialized static at this point
-    // and the selectors point to the correct descriptors
-    unsafe {
-        CS::set_reg(gdt_data.code_selector);
-        SS::set_reg(gdt_data.data_selector);
-        DS::set_reg(gdt_data.data_selector);
-        ES::set_reg(gdt_data.data_selector);
-        load_tss(gdt_data.tss_selector);
+impl Gdt {
+    /// Create a new, uninitialized `Gdt`; call [`Gdt::init`] to populate and load it.
+    pub const fn new() -> Self {
+        Self { table: Once::new() }
     }
 
-    kprint!("Initialized GLOBAL_DESCRIPTOR_TABLE\n");
+    /// Build and load the GDT, then reload all segment registers.
+    ///
+    /// Selectors produced by appending descriptors are used immediately to reload
+    /// CS, SS, DS, ES, and the TSS register. CS cannot be set with a normal `mov`;
+    /// the x86_64 crate handles the required far-return internally in `CS::set_reg`.
+    ///
+    /// # Panics
+    /// Panics if [`super::tss::Tss::init`] was not called first.
+    pub fn init(&'static self, tss: &'static super::tss::Tss) {
+        let mut gdt = GlobalDescriptorTable::new();
+
+        let code = gdt.append(Descriptor::kernel_code_segment());
+        let data = gdt.append(Descriptor::kernel_data_segment());
+        let _ucode = gdt.append(Descriptor::user_code_segment());
+        let _udata = gdt.append(Descriptor::user_data_segment());
+        let tss_sel = gdt.append(Descriptor::tss_segment(tss.get()));
+
+        self.table.call_once(|| gdt);
+        self.table.get().unwrap().load();
+
+        // Safe: the GDT is stored in a static-lifetime Once and will not move;
+        // selectors point to valid descriptors appended above.
+        unsafe {
+            CS::set_reg(code);
+            SS::set_reg(data);
+            DS::set_reg(data);
+            ES::set_reg(data);
+            load_tss(tss_sel);
+        }
+
+        kprint!("Initialized GDT\n");
+    }
 }

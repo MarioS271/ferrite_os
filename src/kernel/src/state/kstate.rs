@@ -35,7 +35,7 @@ static KSTATE: KState = KState {
     mm: Mm {},
     irq: Irq {},
     time: Time {},
-    cpu: Cpu {},
+    cpu: Cpu::new(),
     fs: Fs {},
     procs: Procs {},
 };
@@ -46,31 +46,18 @@ static KSTATE: KState = KState {
 /// access their slice of state directly through the `KState` reference returned
 /// by [`KState::get`].
 pub struct KState {
-    /// Physical and virtual device registry (real hardware devices).
     pub devs: Devs,
-    /// Virtual device registry (software-emulated devices).
     pub vdevs: VDevs,
-    /// System-wide configuration and metadata.
     pub sys: Sys,
-    /// Filesystem mount table.
     pub mnt: Mounts,
-    /// Network subsystem state.
     pub net: Net,
-    /// Inter-process communication state.
     pub ipc: Ipc,
-    /// Process scheduler state.
     pub sched: Sched,
-    /// Memory management subsystem state.
     pub mm: Mm,
-    /// IRQ routing and handler table.
     pub irq: Irq,
-    /// System time and clock state.
     pub time: Time,
-    /// CPU topology and per-CPU data.
     pub cpu: Cpu,
-    /// Virtual filesystem state.
     pub fs: Fs,
-    /// Process table.
     pub procs: Procs,
 }
 

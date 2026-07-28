@@ -9,8 +9,8 @@
 //! Authors: MarioS271
 
 pub(crate) mod instructions;
+pub(crate) mod tables;
 mod interrupts;
-mod tables;
 
 /// Initialize all x86_64 hardware structures required before enabling interrupts.
 ///
@@ -22,8 +22,13 @@ mod tables;
 ///    reference the stacks set up in step 1).
 /// 4. **PIC** — remaps IRQ vectors away from the exception range and enables IRQ0.
 pub(crate) fn init() {
-    tables::tss::init();
-    tables::gdt::init();
-    tables::idt::init();
+    use crate::state::kstate::KState;
+
+    let cpu = &KState::get().cpu;
+
+    cpu.tss[0].init();
+    cpu.gdt[0].init(&cpu.tss[0]);
+    cpu.idt.init();
+
     interrupts::pic::init();
 }
