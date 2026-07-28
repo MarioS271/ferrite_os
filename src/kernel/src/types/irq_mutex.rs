@@ -58,6 +58,22 @@ impl<T> IrqMutex<T> {
 
         IrqMutexGuard::new(self, rflags)
     }
+
+    /// Release the lock without restoring the interrupt flag.
+    ///
+    /// Intended for use in panic paths where the normal guard-based release is
+    /// unavailable because the guard is owned by the panicking call frame. Clears
+    /// the `locked` flag so that subsequent direct writes (which bypass the lock
+    /// entirely) are not blocked if the lock happens to be held at panic time.
+    ///
+    /// # Safety
+    /// Calling this while a live [`IrqMutexGuard`] still exists for this mutex
+    /// creates two concurrent accessors to the protected data. Only call from a
+    /// panic handler that will halt the CPU immediately after and never accesses
+    /// the protected data through the mutex again.
+    pub unsafe fn force_unlock(&self) {
+        self.locked.store(false, Ordering::Release);
+    }
 }
 
 /// RAII guard for [`IrqMutex`].

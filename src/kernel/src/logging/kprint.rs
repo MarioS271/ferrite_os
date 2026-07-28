@@ -102,6 +102,20 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str) {
     }
 }
 
+/// Release [`KPRINT_STATE`]'s lock without restoring the interrupt flag.
+///
+/// Thin wrapper around [`IrqMutex::force_unlock`] for use in panic paths that cannot
+/// access [`KPRINT_STATE`] directly. See [`IrqMutex::force_unlock`] for the full
+/// safety contract.
+///
+/// # Safety
+/// Same as [`IrqMutex::force_unlock`]: must only be called from a panic handler that
+/// will halt the CPU immediately after and will not access [`KPRINT_STATE`] through
+/// the mutex again.
+pub unsafe fn force_unlock_kprint_state() {
+    KPRINT_STATE.force_unlock();
+}
+
 /// RAII handle that holds the [`KPRINT_STATE`] lock for the duration of a `kprint!` call.
 ///
 /// Constructed by [`KernelWriter::lock`], which acquires [`KPRINT_STATE`] and stores
