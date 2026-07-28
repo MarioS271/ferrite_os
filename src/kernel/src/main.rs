@@ -25,7 +25,8 @@ use crate::types::panic_codes::PanicCode;
 
 struct SimpleKernelState {
     serial: Once<logging::serial::Serial>,
-    basic_fb: Once<screen::basic::framebuffer::BasicFramebufferData>
+    basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,
+    basic_fb_psf2_font: Once<screen::basic::font::Psf2Font>,
 }
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
@@ -35,6 +36,7 @@ static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 pub static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     serial: Once::new(),
     basic_fb: Once::new(),
+    basic_fb_psf2_font: Once::new(),
 };
 
 #[no_mangle]
@@ -55,10 +57,19 @@ extern "C" fn kmain() -> ! {
         }
     }
 
-    if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
-        if let Some(fb) = fb_response.framebuffers().first() {
-            screen::basic::framebuffer::init_framebuffer(fb);
-            screen::basic::font::init_font_header();
+    {
+        use crate::screen::basic::framebuffer::BasicFramebuffer;
+        use crate::screen::basic::font::Psf2Font;
+
+        if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
+            if let Some(fb) = fb_response.framebuffers().first() {
+                SIMPLE_STATE.basic_fb.call_once(|| -> BasicFramebuffer {
+                    BasicFramebuffer::new(fb)
+                });
+                SIMPLE_STATE.basic_fb_psf2_font.call_once(|| -> Psf2Font {
+                    Psf2Font::init()
+                });
+            }
         }
     }
 
@@ -81,12 +92,8 @@ extern "C" fn kmain() -> ! {
 
     instructions::enable_interrupts();
 
-    panic!("test");
 
-    // deliberate 
-    unsafe { core::arch::asm!("mov al, byte ptr [0]", out("al") _, options(nostack, readonly)); }
-
-    kprint!("Kernel ran successfully!");
+    kprint!("Kernel ran successfully!\n");
 
     // To halt the kernel on finish (temporary)
     loop {

@@ -8,4 +8,3 @@
 
 pub(crate) mod framebuffer;
 pub(crate) mod font;
-pub(crate) mod text;
