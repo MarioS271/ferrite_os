@@ -23,7 +23,6 @@ use crate::types::panic_codes::PanicCode;
 use crate::arch::instructions;
 use crate::SIMPLE_STATE;
 use crate::types::fmt_buffer::FmtBuffer;
-use crate::types::irq_mutex::IrqMutex;
 
 /// Set to `true` the first time `kernel_panic` fires; prevents re-entrant panics
 /// from looping back through the printing logic.
@@ -44,7 +43,7 @@ static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 /// to the `hlt` loop to avoid infinite recursion.
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
-    
+
     // Worst case, serial + basic fb output gets interrupted/cut off, which isn't a big deal
     // considering the kernel has panicked
     unsafe { crate::logging::kprint::force_unlock_kprint_state(); }
