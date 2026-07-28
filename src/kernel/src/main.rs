@@ -62,7 +62,7 @@ static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 /// Fields are initialized in `kmain` via `call_once` and then read-only. Callers
 /// should check `is_completed()` before calling `get()` — for example, the panic
 /// handler does this to avoid crashing while printing a crash message.
-pub static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
+pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     serial: Once::new(),
     basic_fb: Once::new(),
     basic_fb_psf2_font: Once::new(),
