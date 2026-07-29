@@ -36,13 +36,8 @@ struct SimpleKernelState {
     vmm: Once<mem::vmm::Vmm>,
 }
 
-/// Limine request for the linear framebuffer.
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
-
-/// Limine request for the physical memory map.
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
-
-/// Limine request for the Higher-Half Direct Map (HHDM) offset.
 static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
 /// Global early-boot state, readable from anywhere in the kernel once initialized.

@@ -5,16 +5,16 @@
 
 use crate::types::irq_mutex::{IrqMutex, IrqMutexGuard};
 
-/// Capacity of the in-memory log ring buffer in bytes.
-const LOG_BUFFER_SIZE: usize = u16::MAX as usize;
+/// Capacity of the in-memory log ring buffer (default: 512 KiB).
+const LOG_BUFFER_SIZE: usize = 1 << 19;
+
+/// Marker which signifies that the next byte is a log level indicator byte. ("!", "A", "C", ...)
+const LOG_LEVEL_MARKER: &str = "\x01";
 
 /// All mutable state for the `kprint` subsystem, protected by an [`IrqMutex`].
 struct KernelPrintState {
-    /// Circular byte buffer holding the most recent log output.
     log_buf: [u8; LOG_BUFFER_SIZE],
-    /// Index of the next byte to write into `log_buf`.
     log_head: usize,
-    /// Index of the oldest readable byte in `log_buf`.
     log_tail: usize,
     cursor_x: usize,
     cursor_y: usize,
@@ -108,6 +108,10 @@ impl KernelWriter {
     pub fn print_raw(&mut self, string: &str, color: Option<u32>) {
         kprint(&mut self.lock, string, color);
     }
+
+    pub fn print_level_marker(&mut self) {
+        write_log_buf(&mut self.lock, LOG_LEVEL_MARKER);
+    }
 }
 impl core::fmt::Write for KernelWriter {
     fn write_str(&mut self, string: &str) -> core::fmt::Result {
@@ -146,6 +150,7 @@ macro_rules! kemerg {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("! ", Some(LogLevelColor::Emergency as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -159,6 +164,7 @@ macro_rules! kalert {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("A ", Some(LogLevelColor::Alert as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -172,6 +178,7 @@ macro_rules! kcrit {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("C ", Some(LogLevelColor::Critical as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -185,6 +192,7 @@ macro_rules! kerror {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("E ", Some(LogLevelColor::Error as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -198,6 +206,7 @@ macro_rules! kwarn {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("W ", Some(LogLevelColor::Warn as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -211,6 +220,7 @@ macro_rules! kinfo {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("I ", Some(LogLevelColor::Info as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
@@ -225,6 +235,7 @@ macro_rules! kdebug {
         {
             use $crate::logging::kprint::{KernelWriter, LogLevelColor};
             let mut w = KernelWriter::lock();
+            w.print_level_marker();
             w.print_raw("D ", Some(LogLevelColor::Debug as u32));
             let _ = core::fmt::write(&mut w, format_args!($($arg)*));
             w.print_raw("\n", None);
