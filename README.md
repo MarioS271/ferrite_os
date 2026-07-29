@@ -1,72 +1,70 @@
 # FerriteOS
 
-A bare-metal x86-64 operating system written from scratch in Rust, targeting UEFI systems with the [Limine v8.x](https://github.com/limine-bootloader/limine) bootloader.
-Long-term goal: full Linux x86_64 ABI compatibility. Run unmodified Linux ELF binaries on a kernel written entirely in Rust.
+A bare-metal x86-64 kernel written from scratch in Rust, targeting UEFI systems with the [Limine v8.x](https://github.com/limine-bootloader/limine) bootloader.
+Long-term goal: full Linux x86_64 ABI compatibility — run unmodified Linux ELF binaries on a kernel written entirely in Rust.
 
----
+`no_std`, `x86_64-unknown-none`. No OS underneath. Single Cargo workspace member at `src/kernel`.
+Architecture-specific code is isolated under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/`; the parent `mod.rs` of each selects the right submodule at compile time via `#[cfg(target_arch)]` and re-exports it, so the rest of the kernel uses architecture-independent paths.
 
-## What's implemented
-
-| Subsystem                                         | Status  |
-|---------------------------------------------------|---------|
-| Serial (COM1 UART) + framebuffer text output      | Done    |
-| GDT, TSS, IDT + exception handlers                | Done    |
-| Physical memory manager (bitmap allocator)        | Done    |
-| Virtual memory manager (4-level page tables, CR3) | Done    |
-| Heap allocator                                    | Partial |
-| Scheduler, ELF loader, syscall layer, VFS, TTY    | Planned |
-
-The kernel is a single Cargo workspace member (`src/kernel`), compiled for `x86_64-unknown-none`.
-`no-std`, no OS underneath. Serial output goes over COM1; framebuffer rendering uses a PSF2 font drawn pixel-by-pixel from the Limine framebuffer response.
-
-Architecture-specific code lives under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/`.
-Each parent `mod.rs` selects the correct submodule at compile time via `#[cfg(target_arch)]` and re-exports it,
-so the rest of the kernel uses architecture-independent paths like `arch::init()`.
-
-Full subsystem documentation lives in [`docs/`](docs/):
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — goals, boot sequence, memory layout, milestones
-- [`docs/mem/`](docs/mem/) — PMM, VMM, heap
-- [`docs/arch/x86_64/`](docs/arch/x86_64/) — GDT, TSS, IDT
-- [`docs/logging/`](docs/logging/) — serial, `kprint!`
-- [`docs/screen/`](docs/screen/basic/) — framebuffer, font, text rendering
-- ...
+Subsystem documentation lives in [`docs/`](docs/), mirroring `src/kernel/src/`.
 
 ---
 
 ## Requirements
 
-- **Docker Desktop** — kernel is compiled inside a Debian + nightly Rust container
-- **Python 3.11+** — custom build tool (`run/build-win.py`)
+- **Docker Desktop** — compilation runs inside a Debian + nightly Rust container
+- **Python 3.11+** — build and docs scripts
 - **QEMU** with x86-64 support
-- **OVMF firmware** (`code.fd` + `vars.fd`) in `run/dependencies/ovmf/` — get from [rust-osdev/ovmf-prebuilt](https://github.com/rust-osdev/ovmf-prebuilt)
+- **OVMF firmware** (`code.fd` + `vars.fd`) placed in `run/deps/ovmf/` — available from [rust-osdev/ovmf-prebuilt](https://github.com/rust-osdev/ovmf-prebuilt)
 
+---
 
 ## Configuration
 
-Create `run/configs/build.toml` before first use:
+`run/config/build.toml` controls build behavior. The file is not committed — create it before first use.
 
 ```toml
+[options]
+profile = "debug"       # "debug" or "release"
+
+[features]
+debug-logging = true    # enable kdebug! log output
+
 [extra_paths]
-paths = [
+paths = [               # directories appended to PATH at script startup
     "C:/Program Files/qemu",
     "C:/Program Files/Docker/Docker/resources/bin",
 ]
 ```
 
-Leave this file empty if you do not have any extra path variables to declare.
-
-
-## Building and Running
-
-```
-python run/build-win.py build   # compile kernel + create ISO (skips if sources unchanged)
-python run/build-win.py run     # launch QEMU with UEFI firmware
-python run/build-win.py all     # build + run
-python run/build-win.py clean   # delete build/ and target/
-```
-
-Incremental builds use MD5 hashing to skip the Docker step when nothing has changed. There is no `cargo test` — bare-metal target doesn't support it. Validation means: clean build + boots in QEMU.
+All sections are optional. Omit `[extra_paths]` entirely if everything is already on your PATH.
 
 ---
 
-This project is licensed under the **GNU General Public License v3.0** (`GPL-3.0-only`). See the [LICENSE](LICENSE) file for details.
+## Scripts
+
+### `scripts/x86_64/build.py` — build and run
+
+```
+python scripts/x86_64/build.py build   # compile kernel + create ISO (skips unchanged sources)
+python scripts/x86_64/build.py run     # launch QEMU with UEFI firmware
+python scripts/x86_64/build.py all     # build then run
+python scripts/x86_64/build.py clean   # delete build/ and target/
+```
+
+Compilation happens inside Docker; QEMU runs natively on the host. Incremental builds use MD5 hashing to skip the Docker step when nothing has changed. There is no `cargo test` — the bare-metal target does not support it.
+
+### `scripts/docs.py` — rustdoc
+
+```
+python scripts/docs.py build   # generate rustdoc for src/kernel inside Docker
+python scripts/docs.py open    # open the generated docs in the browser
+python scripts/docs.py all     # build then open (default)
+python scripts/docs.py clean   # delete generated docs
+```
+
+---
+
+## License
+
+GPL-3.0-only. See [LICENSE](LICENSE).
