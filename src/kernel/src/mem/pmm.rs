@@ -3,7 +3,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::{kinfo};
+use crate::{kdebug, kinfo};
 use x86_64::PhysAddr;
 use limine::memmap;
 
@@ -29,6 +29,32 @@ impl Pmm {
             free: [None; NUM_ORDERS],
             hhdm_offset: hhdm_offset
         };
+
+        #[cfg(feature = "debug-logging")]
+        {
+            let mut total_usable = 0u64;
+            let mut total_reclaimable = 0u64;
+            let mut count_usable = 0u64;
+            let mut count_reclaimable = 0u64;
+            let mut count_reserved = 0u64;
+            let mut count_acpi = 0u64;
+
+            for &entry in entries {
+                match entry.type_ {
+                    memmap::MEMMAP_USABLE => { count_usable += 1; total_usable += entry.length; }
+                    memmap::MEMMAP_BOOTLOADER_RECLAIMABLE => { count_reclaimable += 1; total_reclaimable += entry.length; }
+                    memmap::MEMMAP_RESERVED => { count_reserved += 1; }
+                    memmap::MEMMAP_ACPI_RECLAIMABLE => { count_acpi += 1; }
+                    _ => {}
+                }
+            }
+
+            kdebug!("[PMM] total entries: {}", entries.len());
+            kdebug!("[PMM] usable: {} regions, {} MiB", count_usable, total_usable / 1024 / 1024);
+            kdebug!("[PMM] reclaimable: {} regions, {} MiB", count_reclaimable, total_reclaimable / 1024 / 1024);
+            kdebug!("[PMM] reserved: {} regions", count_reserved);
+            kdebug!("[PMM] acpi: {} regions", count_acpi);
+        }
 
         for &entry in entries {
             if entry.type_ != memmap::MEMMAP_USABLE { continue; }
