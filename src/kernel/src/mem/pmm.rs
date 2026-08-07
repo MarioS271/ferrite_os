@@ -106,7 +106,7 @@ impl Pmm {
             }
         }
 
-        let mut addr = self.pop(current)?;
+        let addr = self.pop(current)?;
         while current > order {
             current -= 1;
             let buddy = PhysAddr::new(addr.as_u64() + (FRAME_SIZE << current));
@@ -141,8 +141,7 @@ impl Pmm {
                     break;
                 }
 
-                // Safe: node is a valid free block; casting its next-pointer field to *mut Option<PhysAddr> is valid (same u64 layout)
-                prev_ptr = unsafe { (node.as_u64() + self.hhdm_offset) as *mut Option<PhysAddr> };
+                prev_ptr = (node.as_u64() + self.hhdm_offset) as *mut Option<PhysAddr>;
 
                 // Safe: HHDM maps all usable memory; next pointer was written by push(), 0 = end of list
                 current = unsafe {
