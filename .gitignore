@@ -1,5 +1,6 @@
 # Editor Configs
 .idea
+!.idea/icon.png
 .vscode
 
 # AI Editors
