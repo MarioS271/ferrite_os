@@ -59,12 +59,27 @@ impl Pmm {
         for &entry in entries {
             if entry.type_ != memmap::MEMMAP_USABLE { continue; }
 
-            let first_frame = entry.base / FRAME_SIZE;
-            let frame_count = entry.length / FRAME_SIZE;
+            let mut addr = entry.base;
+            let mut remaining = entry.length;
 
-            for frame in first_frame..(first_frame + frame_count) {
-                if frame == 0 { continue; }
-                pmm.free_frame(PhysAddr::new(frame * FRAME_SIZE));
+            if addr == 0 {
+                addr += FRAME_SIZE;
+                remaining -= FRAME_SIZE;
+            }
+
+            while remaining >= FRAME_SIZE {
+                let mut order = MAX_ORDER;
+                while order > 0 {
+                    let block_size = FRAME_SIZE << order;
+                    if remaining >= block_size && addr % (FRAME_SIZE << order) == 0 { break; }
+                    order -= 1;
+                }
+
+                pmm.free(PhysAddr::new(addr), order);
+
+                let block_size = FRAME_SIZE << order;
+                addr += block_size;
+                remaining -= block_size;
             }
         }
 
