@@ -17,11 +17,6 @@ pub struct Pmm {
     hhdm_offset: u64
 }
 
-// TODO: Pmm contains no raw pointers; verify PhysAddr: Send + Sync (it is a u64 newtype),
-// then remove these manual impls and let the compiler derive them.
-unsafe impl Send for Pmm {}
-unsafe impl Sync for Pmm {}
-
 impl Pmm {
     /// Initialize the PMM from the Limine memory map, coalescing usable frames into the buddy free lists.
     pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) -> Self {
