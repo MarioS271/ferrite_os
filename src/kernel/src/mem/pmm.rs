@@ -83,6 +83,7 @@ impl Pmm {
         pmm
     }
 
+    /// Allocate a block of `FRAME_SIZE << order` bytes
     pub fn alloc(&mut self, order: usize) -> Option<PhysAddr> {
         if order > 10 { return None; }
 
@@ -111,10 +112,12 @@ impl Pmm {
         Some(addr)
     }
 
+    /// Wrapper for [`alloc(0)`](Self::alloc), allocates exactly one frame (order 0)
     pub fn alloc_frame(&mut self) -> Option<PhysAddr> {
         self.alloc(0)
     }
 
+    /// Return a block of `FRAME_SIZE << order` bytes to the free lists, merging with available buddies
     pub fn free(&mut self, mut addr: PhysAddr, mut order: usize) {
         while order < MAX_ORDER {
             let buddy = PhysAddr::new(addr.as_u64() ^ (FRAME_SIZE << order));
@@ -154,6 +157,7 @@ impl Pmm {
         self.push(order, addr);
     }
 
+    /// Wrapper for [`free(addr, 0)`](Self::free), frees exactly one frame (order 0)
     pub fn free_frame(&mut self, addr: PhysAddr) {
         self.free(addr, 0)
     }
