@@ -22,6 +22,7 @@ use spin::Once;
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 use crate::arch::instructions;
 use crate::panic::kernel_panic;
+use crate::types::irq_mutex::IrqMutex;
 use crate::types::panic_codes::PanicCode;
 
 /// Early-boot singleton resources; written once in `kmain`, then read-only.
@@ -32,8 +33,8 @@ struct SimpleKernelState {
     serial: Once<logging::serial::Serial>,
     basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,
     basic_fb_psf2_font: Once<screen::basic::font::Psf2Font>,
-    pmm: Once<mem::pmm::Pmm>,
-    vmm: Once<mem::vmm::Vmm>,
+    pmm: Once<IrqMutex<mem::pmm::Pmm>>,
+    vmm: Once<IrqMutex<mem::vmm::Vmm>>,
 }
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
@@ -94,8 +95,8 @@ extern "C" fn kmain() -> ! {
         // Init physical + virtual mem manager
         if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
             if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
-                SIMPLE_STATE.pmm.call_once(|| mem::pmm::Pmm::init(memmap_response.entries(), hhdm_response.offset) );
-                SIMPLE_STATE.vmm.call_once(|| mem::vmm::Vmm::init(SIMPLE_STATE.pmm.get().unwrap(), hhdm_response.offset));
+                SIMPLE_STATE.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries(), hhdm_response.offset)));
+                SIMPLE_STATE.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init(SIMPLE_STATE.pmm.get().unwrap(), hhdm_response.offset)));
             }
         }
     }

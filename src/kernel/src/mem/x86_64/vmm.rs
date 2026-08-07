@@ -10,12 +10,11 @@ use crate::mem::pmm::Pmm;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::{PhysAddr, VirtAddr};
+use crate::types::irq_mutex::IrqMutex;
 
 /// Kernel page-table state used by all VMM operations.
 pub struct Vmm {
-    /// Virtual address of the active PML4 (the table installed in CR3).
     pub plm4_ptr: *mut PageTable,
-    /// Higher-Half Direct Map offset: add to any physical address to get its virtual address.
     pub hhdm_offset: u64,
 }
 
@@ -29,11 +28,13 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
-    pub fn init(pmm: &Pmm, hhdm_offset: u64) -> Self {
+    pub fn init(pmm_mutex: &IrqMutex<Pmm>, hhdm_offset: u64) -> Self {
+        let mut pmm = pmm_mutex.lock();
+
         let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 
         let plm4_ptr = (
-            pmm.alloc().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
+            pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
         ) as *mut PageTable;
 
         // Safe because the PMM gives us a valid piece of memory
@@ -72,7 +73,7 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM runs out of frames when allocating an intermediate page table.
-    pub unsafe fn map_page(&self, pmm: &Pmm, virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
+    pub unsafe fn map_page(&self, pmm: &mut Pmm, virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 

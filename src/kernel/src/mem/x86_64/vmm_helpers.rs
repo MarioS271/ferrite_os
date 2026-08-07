@@ -29,8 +29,8 @@ pub fn out_of_memory_panic() -> ! {
 ///
 /// # Panics
 /// Panics if the PMM is out of memory.
-pub fn alloc_zeroed_frame(pmm: &Pmm, hhdm_offset: u64) -> PhysFrame {
-    let frame = pmm.alloc().unwrap_or_else(|| out_of_memory_panic());
+pub fn alloc_zeroed_frame(pmm: &mut Pmm, hhdm_offset: u64) -> PhysFrame {
+    let frame = pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic());
 
     // Safe because the PMM gives us a valid piece of memory
     unsafe {

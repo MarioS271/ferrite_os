@@ -11,6 +11,7 @@ use crate::types::panic_codes::PanicCode;
 use x86_64::VirtAddr;
 use x86_64::structures::paging::PageTableFlags;
 use linked_list_allocator::LockedHeap;
+use crate::types::irq_mutex::IrqMutex;
 
 /// First virtual address of the heap region (higher-half kernel space).
 static HEAP_BASE_ADDRESS: VirtAddr = VirtAddr::new(0xffff_8080_0000_0000);
@@ -26,17 +27,20 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 ///
 /// # Panics
 /// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
-pub fn init(pmm: &Pmm, vmm: &Vmm) {
+pub fn init(pmm_mutex: &IrqMutex<Pmm>, vmm_mutex: &IrqMutex<Vmm>) {
+    let mut pmm = pmm_mutex.lock();
+    let mut vmm = vmm_mutex.lock();
+
     unsafe {
         for page in 0..(HEAP_SIZE / FRAME_SIZE as usize) {
-            let phys_page = pmm.alloc().unwrap_or_else(
+            let phys_page = pmm.alloc_frame().unwrap_or_else(
                 || kernel_panic(
                     PanicCode::OutOfMemory,
                     "Out of memory for heap",
                 )
             );
             vmm.map_page(
-                pmm,
+                &mut pmm,
                 HEAP_BASE_ADDRESS + (page * FRAME_SIZE as usize) as u64,
                 phys_page,
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE,

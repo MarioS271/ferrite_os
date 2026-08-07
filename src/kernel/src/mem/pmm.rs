@@ -1,202 +1,160 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Physical Memory Manager (PMM): tracks free and used 4 KiB physical frames with
-//! a bitmap and hands out or reclaims individual frames.
+//! Physical Memory Manager (PMM): buddy allocator that tracks and hands out physical frames.
 //!
 //! Authors: MarioS271
 
-use crate::{kdebug, kemerg, kinfo};
-use crate::panic::kernel_panic;
-use crate::types::panic_codes::PanicCode;
+use crate::{kinfo};
 use x86_64::PhysAddr;
 use limine::memmap;
-use limine::memmap::MEMMAP_USABLE;
 
-pub static FRAME_SIZE: u64 = 4096;
+pub const FRAME_SIZE: u64 = 4096;
+const MAX_ORDER: usize = 10;
+const NUM_ORDERS: usize = MAX_ORDER + 1;
 
-/// Bitmap-based tracker of free and used physical frames.
+/// Buddy-Allocator based tracker of free and used physical frames.
 pub struct Pmm {
-    bitmap_ptr: *mut u8,
-    total_frames: u64,
-    bitmap_start_frame: u64,
-    bitmap_end_frame: u64,
+    free: [Option<PhysAddr>; 11],
+    hhdm_offset: u64
 }
 
-// TODO: write justification for this
+// TODO: Pmm contains no raw pointers; verify PhysAddr: Send + Sync (it is a u64 newtype),
+// then remove these manual impls and let the compiler derive them.
 unsafe impl Send for Pmm {}
 unsafe impl Sync for Pmm {}
 
 impl Pmm {
-    /// Initialize the PMM from the Limine memory map.
-    ///
-    /// # Panics
-    /// Panics if no single usable memory region is large enough to hold the bitmap.
+    /// Initialize the PMM from the Limine memory map, coalescing usable frames into the buddy free lists.
     pub fn init(entries: &[&memmap::Entry], hhdm_offset: u64) -> Self {
-        let mut max_entry = 0;
+        let mut pmm = Pmm {
+            free: [None; NUM_ORDERS],
+            hhdm_offset: hhdm_offset
+        };
 
-        for entry in entries {
-            if entry.type_ != MEMMAP_USABLE {
-                continue;
-            }
-
-            if entry.base + entry.length > max_entry {
-                max_entry = entry.base + entry.length;
-            }
-        }
-
-        let total_frames = max_entry / FRAME_SIZE;
-        let bitmap_bytes = total_frames.div_ceil(8);
-
-        kdebug!("[PMM] total_frames={total_frames}");
-        kdebug!("[PMM] bitmap_bytes={bitmap_bytes}");
-
-        let mut _bitmap_physical_base_addr: Option<u64> = None;
-        let mut _bitmap_base_addr: Option<*mut u8> = None;
-
-        for entry in entries {
-            if entry.type_ != MEMMAP_USABLE {
-                continue;
-            }
-
-            if entry.length >= bitmap_bytes {
-                _bitmap_physical_base_addr = Some(entry.base);
-                _bitmap_base_addr = Some((entry.base + hhdm_offset) as *mut u8);
-                break;
-            }
-        }
-
-        if _bitmap_physical_base_addr.is_none()
-            || _bitmap_base_addr.is_none()
-        {
-            kernel_panic(
-                PanicCode::NoValidMemMapEntry,
-                "Could not find a usable memmap entry to place PMM bitmap in",
-            );
-        }
-
-        let bitmap_physical_base_addr = _bitmap_physical_base_addr.unwrap();
-        let bitmap_base_addr = _bitmap_base_addr.unwrap();
-
-        kdebug!("[PMM] bitmap_physical_base_addr={bitmap_physical_base_addr}");
-        kdebug!("[PMM] bitmap_base_addr={bitmap_base_addr:p}");
-
-        // This is safe because we're writing over our bitmap which was determined from safe
-        // limine-provided values.
-        unsafe {
-            core::ptr::write_bytes(bitmap_base_addr, 0xFF, bitmap_bytes as usize);
-        }
-
-        let bitmap_start_frame = bitmap_physical_base_addr / FRAME_SIZE;
-
-        // Subtracting one so that the value is the last used frame, not the one after
-        let bitmap_end_frame = ((bitmap_physical_base_addr + bitmap_bytes).div_ceil(FRAME_SIZE)) - 1;
-
-        kdebug!("[PMM] bitmap_start_frame={bitmap_start_frame}");
-        kdebug!("[PMM] bitmap_end_frame={bitmap_end_frame}");
-
-        for entry in entries {
-            if entry.type_ != MEMMAP_USABLE {
-                continue;
-            }
+        for &entry in entries {
+            if entry.type_ != memmap::MEMMAP_USABLE { continue; }
 
             let first_frame = entry.base / FRAME_SIZE;
             let frame_count = entry.length / FRAME_SIZE;
 
             for frame in first_frame..(first_frame + frame_count) {
-                let frame_byte_offset = frame as usize / 8;
-                let frame_bit_offset = frame % 8;
-
-                if frame == 0 || (frame >= bitmap_start_frame && frame <= bitmap_end_frame) {
-                    continue;
-                }
-
-                // Safe because we're iterating inside our bitmap with bound computed from the
-                // limine values
-                unsafe {
-                    *bitmap_base_addr.add(frame_byte_offset) &= !(1 << (frame_bit_offset));
-                }
+                if frame == 0 { continue; }
+                pmm.free_frame(PhysAddr::new(frame * FRAME_SIZE));
             }
         }
 
         kinfo!("Initialized PMM");
 
-        Pmm {
-            bitmap_ptr: bitmap_base_addr,
-            total_frames: total_frames,
-            bitmap_start_frame: bitmap_start_frame,
-            bitmap_end_frame: bitmap_end_frame,
-        }
+        pmm
     }
 
-    /// Allocate one free physical frame and return its address, or `None` if out of memory.
-    pub fn alloc(&self) -> Option<PhysAddr> {
-        for byte_index in 0..self.total_frames.div_ceil(8) {
-            // Safe because we're operating inside the bitmap address range
-            unsafe {
-                let byte = *self.bitmap_ptr.add(byte_index as usize);
+    pub fn alloc(&mut self, order: usize) -> Option<PhysAddr> {
+        if order > 10 { return None; }
 
-                if byte == 0xFF {
-                    continue;
+        if self.free[order] != None {
+            return self.pop(order);
+        }
+
+        let mut current: usize = MAX_ORDER;
+        for o in order..=MAX_ORDER {
+            if self.free[o] != None {
+                current = o;
+                break;
+            }
+            if o == MAX_ORDER {
+                return None;
+            }
+        }
+
+        let mut addr = self.pop(current)?;
+        while current > order {
+            current -= 1;
+            let buddy = PhysAddr::new(addr.as_u64() + (FRAME_SIZE << current));
+            self.push(current, buddy);
+        }
+
+        Some(addr)
+    }
+
+    pub fn alloc_frame(&mut self) -> Option<PhysAddr> {
+        self.alloc(0)
+    }
+
+    pub fn free(&mut self, mut addr: PhysAddr, mut order: usize) {
+        while order < MAX_ORDER {
+            let buddy = PhysAddr::new(addr.as_u64() ^ (FRAME_SIZE << order));
+
+            let mut current = self.free[order];
+            let mut prev_ptr = &mut self.free[order] as *mut Option<PhysAddr>;
+            let mut found = false;
+
+            while let Some(node) = current {
+                if node == buddy {
+                    // Safe: node is a valid free block; first 8 bytes hold the next pointer written by push()
+                    let next = unsafe {
+                        let val = core::ptr::read((node.as_u64() + self.hhdm_offset) as *const u64);
+                        if val == 0 { None } else { Some(PhysAddr::new(val)) }
+                    };
+                    // Safe: prev_ptr points to either free[order] or a next-pointer field in a free block, both valid via &mut self
+                    unsafe { *prev_ptr = next; }
+                    found = true;
+                    break;
                 }
 
-                let bit_position = u8::trailing_ones(byte);
-                *self.bitmap_ptr.add(byte_index as usize) |= 1 << bit_position;
+                // Safe: node is a valid free block; casting its next-pointer field to *mut Option<PhysAddr> is valid (same u64 layout)
+                prev_ptr = unsafe { (node.as_u64() + self.hhdm_offset) as *mut Option<PhysAddr> };
 
-                let frame_index = byte_index * 8 + bit_position as u64;
-                let frame_address = frame_index * FRAME_SIZE;
-
-                return Some(PhysAddr::new_truncate(frame_address));
+                // Safe: HHDM maps all usable memory; next pointer was written by push(), 0 = end of list
+                current = unsafe {
+                    let val = core::ptr::read((node.as_u64() + self.hhdm_offset) as *const u64);
+                    if val == 0 { None } else { Some(PhysAddr::new(val)) }
+                };
             }
+
+            if !found { break; }
+
+            addr = PhysAddr::new(addr.as_u64().min(buddy.as_u64()));
+            order += 1;
         }
 
-        kemerg!("[PMM] unable to alloc() a frame, out of memory");
-
-        None
+        self.push(order, addr);
     }
 
-    /// Free a previously allocated physical frame.
-    ///
-    /// # Panics
-    /// Panics if `addr` is frame 0, lies within the bitmap's own frames, is beyond
-    /// tracked memory, or is already free (double-free).
-    pub fn free(&self, addr: PhysAddr) {
-        let frame_index = addr.as_u64() / FRAME_SIZE;
+    pub fn free_frame(&mut self, addr: PhysAddr) {
+        self.free(addr, 0)
+    }
 
-        if frame_index == 0 {
-            kernel_panic(
-                PanicCode::IllegalFree,
-                "Attempting to Pmm::free() frame 0",
-            );
-        }
 
-        if frame_index >= self.bitmap_start_frame && frame_index <= self.bitmap_end_frame {
-            kernel_panic(
-                PanicCode::IllegalFree,
-                "Attempting to Pmm::free() in the range of the pmm bitmap",
-            );
-        }
+    /// Remove and return the head block from the order-`order` free list, or `None` if empty.
+    fn pop(&mut self, order: usize) -> Option<PhysAddr> {
+        let head = self.free[order]?;
+        let result;
 
-        if frame_index >= self.total_frames {
-            kernel_panic(
-                PanicCode::IllegalFree,
-                "Attempting to Pmm::free() outside of usable memory",
-            );
-        }
-
-        let byte_offset = frame_index / 8;
-        let bit_offset = frame_index % 8;
-
-        // Safe because we're operating inside the bitmap address range
         unsafe {
-            let byte = *self.bitmap_ptr.add(byte_offset as usize);
-
-            if byte & (1 << bit_offset) == 0u8 {
-                kernel_panic(
-                    PanicCode::DoubleFree,
-                    "Attempting to Pmm::free() a frame which is already freed",
-                );
-            }
-
-            *self.bitmap_ptr.add(byte_offset as usize) &= !(1 << bit_offset);
+            // Safe: head was placed here by push() with a valid usable physical frame
+            // HHDM maps all usable memory, so head + hhdm_offset is a valid mapped address
+            result = core::ptr::read(
+                (head.as_u64() + self.hhdm_offset) as *const u64
+            );
         }
+        if result == 0 {
+            self.free[order] = None;
+        } else {
+            self.free[order] = Some(PhysAddr::new(result));
+        }
+
+        Some(head)
+    }
+
+    /// Prepend `addr` onto the order-`order` free list.
+    fn push(&mut self, order: usize, addr: PhysAddr) {
+        unsafe {
+            // Safe: addr is a valid usable physical frame sourced from the Limine memmap
+            // HHDM maps all usable memory, so addr + hhdm_offset is a valid mapped address
+            core::ptr::write(
+                (addr.as_u64() + self.hhdm_offset) as *mut u64,
+                 self.free[order].map_or(0, |addr| addr.as_u64())
+            );
+        }
+        self.free[order] = Some(addr);
     }
 }
