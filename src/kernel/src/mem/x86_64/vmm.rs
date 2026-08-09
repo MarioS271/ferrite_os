@@ -10,6 +10,7 @@ use crate::mem::pmm::Pmm;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::{PhysAddr, VirtAddr};
+use x86_64::structures::paging::page_table::PageTableEntry;
 use crate::types::irq_mutex::IrqMutex;
 
 /// Kernel page-table state used by all VMM operations.
@@ -42,11 +43,12 @@ impl Vmm {
             core::ptr::write_bytes(plm4_ptr, 0x00, 1);
         }
 
-        for entry in 256..512 {
-            // Both pointers are valid and only touched here at time of execution
-            unsafe {
-                (&mut (*plm4_ptr))[entry] = (&(*limine_plm4_ptr))[entry].clone();
-            }
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                (limine_plm4_ptr as *const PageTableEntry).add(256),
+                (plm4_ptr as *mut PageTableEntry).add(256),
+                256
+            );
         }
 
         let phys_addr_u64 = plm4_ptr as u64 - hhdm_offset;
@@ -87,7 +89,7 @@ impl Vmm {
                 _ => unreachable!()
             }
 
-            let entry = &mut (&mut (*current_pagetable))[index];
+            let entry = &mut current_pagetable.as_mut().unwrap()[index];
 
             if !entry.flags().contains(PageTableFlags::PRESENT) {
                 let frame = alloc_zeroed_frame(pmm, self.hhdm_offset);
@@ -97,7 +99,7 @@ impl Vmm {
             current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
         }
 
-        let entry = &mut (&mut (*current_pagetable))[virt.p1_index()];
+        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
         entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
     }
 
@@ -122,7 +124,7 @@ impl Vmm {
                 _ => unreachable!()
             }
 
-            let entry = &mut (&mut (*current_pagetable))[index];
+            let entry = &mut current_pagetable.as_mut().unwrap()[index];
 
             if !entry.flags().contains(PageTableFlags::PRESENT) {
                 invalid_unmap_panic();
@@ -131,7 +133,7 @@ impl Vmm {
             current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
         }
 
-        let entry = &mut (&mut (*current_pagetable))[virt.p1_index()];
+        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
 
         if !entry.flags().contains(PageTableFlags::PRESENT) {
             invalid_unmap_panic();
