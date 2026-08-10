@@ -77,6 +77,10 @@ impl Vmm {
     /// # Panics
     /// Panics if the PMM runs out of frames when allocating an intermediate page table.
     pub unsafe fn map_page(&self, pmm: &mut Pmm, virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
+        if phys.as_u64() % FRAME_SIZE != 0 || virt.as_u64() % FRAME_SIZE != 0 {
+            misaligned_address_panic_4kib();
+        }
+
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
@@ -111,6 +115,10 @@ impl Vmm {
     /// # Panics
     /// Panics if any level of the walk is not present (page was never mapped).
     pub unsafe fn unmap_page(&self, virt: VirtAddr) {
+        if virt.as_u64() % FRAME_SIZE != 0 {
+            misaligned_address_panic_4kib();
+        }
+
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
         for level in (2..5).rev() {

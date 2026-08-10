@@ -9,6 +9,14 @@ use crate::types::panic_codes::PanicCode;
 use x86_64::structures::paging::{PageTable, PhysFrame};
 use x86_64::PhysAddr;
 
+/// Panic when a given address is not aligned to 4 KiB
+pub fn misaligned_address_panic_4kib() {
+    kernel_panic(
+        PanicCode::InvalidPageOperation,
+        "Physical and/or virtual address is not aligned to 4 KiB"
+    );
+}
+
 /// Panic when `unmap_page` hits a page-table level that is not present.
 pub fn invalid_unmap_panic() -> ! {
     kernel_panic(
