@@ -3,7 +3,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::mem::pmm::Pmm;
+use crate::mem::x86_64::pmm::Pmm;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::structures::paging::{PageTable, PhysFrame};

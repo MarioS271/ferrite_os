@@ -4,7 +4,7 @@
 //!
 //! Authors: MarioS271
 
-use crate::mem::pmm::{Pmm, FRAME_SIZE};
+use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
 use crate::mem::vmm::Vmm;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;

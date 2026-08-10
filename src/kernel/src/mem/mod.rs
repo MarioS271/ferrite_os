@@ -6,5 +6,4 @@
 #[cfg(target_arch = "x86_64")] mod x86_64;
 #[cfg(target_arch = "x86_64")] pub(crate) use x86_64::*;
 
-pub(crate) mod pmm;
 pub(crate) mod heap;

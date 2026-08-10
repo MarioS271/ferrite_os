@@ -3,5 +3,6 @@
 //!
 //! Authors: MarioS271
 
+pub(crate) mod pmm;
 pub(crate) mod vmm;
 mod vmm_helpers;
