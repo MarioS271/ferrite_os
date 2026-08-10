@@ -4,14 +4,14 @@
 //!
 //! Authors: MarioS271
 
-use super::vmm_helpers::*;
-use crate::{kdebug, kinfo};
-use crate::mem::pmm::Pmm;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::{PhysAddr, VirtAddr};
 use x86_64::instructions::tlb;
 use x86_64::structures::paging::page_table::PageTableEntry;
+use super::vmm_helpers::*;
+use crate::{kdebug, kinfo};
+use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
 use crate::types::irq_mutex::IrqMutex;
 
 /// Kernel page-table state used by all VMM operations.
