@@ -84,7 +84,7 @@ impl Vmm {
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
-        for level in (2..5).rev() {
+        for level in [4, 3, 2] {
             let index: PageTableIndex = match level {
                 4 => virt.p4_index(),
                 3 => virt.p3_index(),
@@ -121,7 +121,7 @@ impl Vmm {
 
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
-        for level in (2..5).rev() {
+        for level in [4, 3, 2] {
             let index: PageTableIndex = match level {
                 4 => virt.p4_index(),
                 3 => virt.p3_index(),
@@ -164,7 +164,7 @@ impl Vmm {
 
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
-        for level in (2..5).rev() {
+        for level in [4, 3, 2] {
             let index: PageTableIndex = match level {
                 4 => virt.p4_index(),
                 3 => virt.p3_index(),
@@ -198,7 +198,7 @@ impl Vmm {
     pub fn translate(&self, virt: VirtAddr) -> Option<PhysAddr> {
         let mut current = self.plm4_ptr;
 
-        for level in (2..5).rev() {
+        for level in [4, 3, 2] {
             let idx = match level {
                 4 => virt.p4_index(),
                 3 => virt.p3_index(),
