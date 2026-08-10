@@ -147,4 +147,77 @@ impl Vmm {
         entry.set_unused();
         tlb::flush(virt);
     }
+
+    /// Change page table flags of an already mapped page
+    ///
+    /// # Safety
+    /// The caller must ensure `virt` was previously mapped and that changing the page's flags
+    /// will not violate anything (example: making a page non-writable while a mutable reference
+    /// is held to it)
+    ///
+    /// # Panics
+    /// Panics if any level of the walk is not present (page was never mapped).
+    pub unsafe fn remap_page(&self, virt: VirtAddr, new_flags: PageTableFlags) {
+        if virt.as_u64() % FRAME_SIZE != 0 {
+            misaligned_address_panic_4kib();
+        }
+
+        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
+
+        for level in (2..5).rev() {
+            let index: PageTableIndex = match level {
+                4 => virt.p4_index(),
+                3 => virt.p3_index(),
+                2 => virt.p2_index(),
+                _ => unreachable!()
+            };
+
+            let entry = &mut current_pagetable.as_mut().unwrap()[index];
+
+            if !entry.flags().contains(PageTableFlags::PRESENT) {
+                invalid_remap_panic();
+            }
+
+            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
+
+        }
+
+        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
+
+        if !entry.flags().contains(PageTableFlags::PRESENT) {
+            invalid_remap_panic();
+        }
+
+        let phys_frame = PhysFrame::containing_address(entry.frame().unwrap().start_address());
+        entry.set_frame(phys_frame, new_flags | PageTableFlags::PRESENT);
+        tlb::flush(virt);
+    }
+
+    /// Walk the page table and return the phys address mapped at `virt` or `None` if any
+    /// level is not present
+    pub fn translate(&self, virt: VirtAddr) -> Option<PhysAddr> {
+        let mut current = self.plm4_ptr;
+
+        for level in (2..5).rev() {
+            let idx = match level {
+                4 => virt.p4_index(),
+                3 => virt.p3_index(),
+                2 => virt.p2_index(),
+                _ => unreachable!()
+            };
+
+            // Safe as only current is deref'd and it points to a valid page table frame
+            let entry = &unsafe { core::ptr::read(current)}[idx];
+
+            if !entry.flags().contains(PageTableFlags::PRESENT) { return None }
+
+            current = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
+        }
+
+        // Safe as only current is deref'd and it points to a valid page table frame
+        let entry = &unsafe { core::ptr::read(current) }[virt.p1_index()];
+        if !entry.flags().contains(PageTableFlags::PRESENT) { return None; }
+
+        Some(entry.frame().unwrap().start_address())
+    }
 }
