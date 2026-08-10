@@ -25,6 +25,14 @@ pub fn invalid_unmap_panic() -> ! {
     );
 }
 
+/// Panic when `remap_page` hits a page-table level that is not present.
+pub fn invalid_remap_panic() -> ! {
+    kernel_panic(
+        PanicCode::InvalidPageOperation,
+        "Attempting to remap a page without a PRESENT flag",
+    );
+}
+
 /// Panic when the VMM cannot allocate a frame from the PMM.
 pub fn out_of_memory_panic() -> ! {
     kernel_panic(
