@@ -10,6 +10,7 @@ use crate::mem::pmm::Pmm;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::{PhysAddr, VirtAddr};
+use x86_64::instructions::tlb;
 use x86_64::structures::paging::page_table::PageTableEntry;
 use crate::types::irq_mutex::IrqMutex;
 
@@ -80,14 +81,12 @@ impl Vmm {
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
         for level in (2..5).rev() {
-            let index: PageTableIndex;
-
-            match level {
-                4 => { index = virt.p4_index() }
-                3 => { index = virt.p3_index() }
-                2 => { index = virt.p2_index() }
+            let index: PageTableIndex = match level {
+                4 => virt.p4_index(),
+                3 => virt.p3_index(),
+                2 => virt.p2_index(),
                 _ => unreachable!()
-            }
+            };
 
             let entry = &mut current_pagetable.as_mut().unwrap()[index];
 
@@ -115,14 +114,12 @@ impl Vmm {
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
         for level in (2..5).rev() {
-            let index: PageTableIndex;
-
-            match level {
-                4 => { index = virt.p4_index() }
-                3 => { index = virt.p3_index() }
-                2 => { index = virt.p2_index() }
+            let index: PageTableIndex = match level {
+                4 => virt.p4_index(),
+                3 => virt.p3_index(),
+                2 => virt.p2_index(),
                 _ => unreachable!()
-            }
+            };
 
             let entry = &mut current_pagetable.as_mut().unwrap()[index];
 
@@ -140,6 +137,6 @@ impl Vmm {
         }
 
         entry.set_unused();
-        x86_64::instructions::tlb::flush(virt);
+        tlb::flush(virt);
     }
 }
