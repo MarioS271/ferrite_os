@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Virtual Memory Manager (VMM) for x86_64: owns the kernel page table and maps
-//! and unmaps pages at 4 KiB granularity.
+//! Contains VMM definitions such as the VMM struct, the HugePageType enum and more
 //!
 //! Authors: MarioS271
 
+use x86_64::PhysAddr;
 use x86_64::registers::control::Cr3;
-use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
-use x86_64::{PhysAddr, VirtAddr};
-use x86_64::instructions::tlb;
+use x86_64::structures::paging::{PageTable, PhysFrame};
 use x86_64::structures::paging::page_table::PageTableEntry;
-use super::vmm_helpers::*;
-use crate::{kdebug, kinfo};
-use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
+use crate::kinfo;
+use crate::mem::pmm::Pmm;
+use crate::panic::kernel_panic;
 use crate::types::irq_mutex::IrqMutex;
+use crate::types::panic_codes::PanicCode;
 
 /// Kernel page-table state used by all VMM operations.
 pub struct Vmm {
@@ -26,6 +25,7 @@ unsafe impl Send for Vmm {}
 unsafe impl Sync for Vmm {}
 
 impl Vmm {
+    // TODO: refactor to be reusable instead of only initing the kernel page table
     /// Initialize the VMM and install a kernel-owned PML4 into CR3.
     ///
     /// # Panics
@@ -62,162 +62,31 @@ impl Vmm {
             Cr3::write(phys_frame, current_cr3_flags);
         }
 
-        kdebug!("[VMM] allocated frame for plm4 at phys addr {phys_addr_u64:#x}");
-        kinfo!("Initialized VMM");
+        kinfo!("Initialized VMM (Phys Addr: {phys_addr_u64:#x})");
 
         Vmm { plm4_ptr, hhdm_offset }
     }
+}
 
-    /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
-    /// valid, PMM-allocated frame.
-    ///
-    /// # Panics
-    /// Panics if the PMM runs out of frames when allocating an intermediate page table.
-    pub unsafe fn map_page(&self, pmm: &mut Pmm, virt: VirtAddr, phys: PhysAddr, flags: PageTableFlags) {
-        if phys.as_u64() % FRAME_SIZE != 0 || virt.as_u64() % FRAME_SIZE != 0 {
-            misaligned_address_panic_4kib();
-        }
+/// Allocate one physical frame from the PMM, zero it, and return it as a [`PhysFrame`].
+///
+/// # Panics
+/// Panics if the PMM is out of memory.
+pub fn alloc_zeroed_frame(pmm: &mut Pmm, hhdm_offset: u64) -> PhysFrame {
+    let frame = pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic());
 
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
-        let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
-
-        for level in [4, 3, 2] {
-            let index: PageTableIndex = match level {
-                4 => virt.p4_index(),
-                3 => virt.p3_index(),
-                2 => virt.p2_index(),
-                _ => unreachable!()
-            };
-
-            let entry = &mut current_pagetable.as_mut().unwrap()[index];
-
-            if !entry.flags().contains(PageTableFlags::PRESENT) {
-                let frame = alloc_zeroed_frame(pmm, self.hhdm_offset);
-                entry.set_frame(frame, intermediate_flags);
-            }
-
-            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
-        }
-
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
-        entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
+    // Safe because the PMM gives us a valid piece of memory
+    unsafe {
+        core::ptr::write_bytes((frame.as_u64() + hhdm_offset) as *mut PageTable, 0x00, 1);
     }
 
-    /// Unmap one 4 KiB virtual page and flush its TLB entry.
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` was previously mapped and that no live code or
-    /// data references the page after this call returns.
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn unmap_page(&self, virt: VirtAddr) {
-        if virt.as_u64() % FRAME_SIZE != 0 {
-            misaligned_address_panic_4kib();
-        }
+    PhysFrame::from_start_address(PhysAddr::new(frame.as_u64())).unwrap()
+}
 
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
-
-        for level in [4, 3, 2] {
-            let index: PageTableIndex = match level {
-                4 => virt.p4_index(),
-                3 => virt.p3_index(),
-                2 => virt.p2_index(),
-                _ => unreachable!()
-            };
-
-            let entry = &mut current_pagetable.as_mut().unwrap()[index];
-
-            if !entry.flags().contains(PageTableFlags::PRESENT) {
-                invalid_unmap_panic();
-            }
-
-            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
-        }
-
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
-
-        if !entry.flags().contains(PageTableFlags::PRESENT) {
-            invalid_unmap_panic();
-        }
-
-        entry.set_unused();
-        tlb::flush(virt);
-    }
-
-    /// Change page table flags of an already mapped page
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` was previously mapped and that changing the page's flags
-    /// will not violate anything (example: making a page non-writable while a mutable reference
-    /// is held to it)
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn remap_page(&self, virt: VirtAddr, new_flags: PageTableFlags) {
-        if virt.as_u64() % FRAME_SIZE != 0 {
-            misaligned_address_panic_4kib();
-        }
-
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
-
-        for level in [4, 3, 2] {
-            let index: PageTableIndex = match level {
-                4 => virt.p4_index(),
-                3 => virt.p3_index(),
-                2 => virt.p2_index(),
-                _ => unreachable!()
-            };
-
-            let entry = &mut current_pagetable.as_mut().unwrap()[index];
-
-            if !entry.flags().contains(PageTableFlags::PRESENT) {
-                invalid_remap_panic();
-            }
-
-            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
-
-        }
-
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
-
-        if !entry.flags().contains(PageTableFlags::PRESENT) {
-            invalid_remap_panic();
-        }
-
-        let phys_frame = PhysFrame::containing_address(entry.frame().unwrap().start_address());
-        entry.set_frame(phys_frame, new_flags | PageTableFlags::PRESENT);
-        tlb::flush(virt);
-    }
-
-    /// Walk the page table and return the phys address mapped at `virt` or `None` if any
-    /// level is not present
-    pub fn translate(&self, virt: VirtAddr) -> Option<PhysAddr> {
-        let mut current = self.plm4_ptr;
-
-        for level in [4, 3, 2] {
-            let idx = match level {
-                4 => virt.p4_index(),
-                3 => virt.p3_index(),
-                2 => virt.p2_index(),
-                _ => unreachable!()
-            };
-
-            // Safe as only current is deref'd and it points to a valid page table frame
-            let entry = &unsafe { core::ptr::read(current)}[idx];
-
-            if !entry.flags().contains(PageTableFlags::PRESENT) { return None }
-
-            current = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
-        }
-
-        // Safe as only current is deref'd and it points to a valid page table frame
-        let entry = &unsafe { core::ptr::read(current) }[virt.p1_index()];
-        if !entry.flags().contains(PageTableFlags::PRESENT) { return None; }
-
-        Some(entry.frame().unwrap().start_address())
-    }
+/// Panic when the VMM cannot allocate a frame from the PMM.
+pub fn out_of_memory_panic() -> ! {
+    kernel_panic(
+        PanicCode::OutOfMemory,
+        "VMM could not allocate a frame, out of memory",
+    )
 }

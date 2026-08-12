@@ -5,7 +5,7 @@
 //! Authors: MarioS271
 
 use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
-use crate::mem::vmm::Vmm;
+use crate::mem::vmm::{Vmm, PageType};
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::VirtAddr;
@@ -31,19 +31,20 @@ pub fn init(pmm_mutex: &IrqMutex<Pmm>, vmm_mutex: &IrqMutex<Vmm>) {
     let mut pmm = pmm_mutex.lock();
     let mut vmm = vmm_mutex.lock();
 
+    const HUGE_PAGE_SIZE: usize = 0x200_000; // 2 MiB
+    const NUM_HUGE_PAGES: usize = HEAP_SIZE / HUGE_PAGE_SIZE; // 2
+
     unsafe {
-        for page in 0..(HEAP_SIZE / FRAME_SIZE as usize) {
-            let phys_page = pmm.alloc_frame().unwrap_or_else(
-                || kernel_panic(
-                    PanicCode::OutOfMemory,
-                    "Out of memory for heap",
-                )
+        for page in 0..NUM_HUGE_PAGES {
+            let phys = pmm.alloc(9).unwrap_or_else(
+                || kernel_panic(PanicCode::OutOfMemory, "Out of memory for heap")
             );
             vmm.map_page(
                 &mut pmm,
-                HEAP_BASE_ADDRESS + (page * FRAME_SIZE as usize) as u64,
-                phys_page,
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+                HEAP_BASE_ADDRESS + (page * HUGE_PAGE_SIZE) as u64,
+                phys,
+                PageType::HugePage2MiB,
+                PageTableFlags::WRITABLE,
             );
         }
 
