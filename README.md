@@ -1,12 +1,12 @@
-# FerriteOS
+# <img src="logo/logo_full/ferrite_logo_full_1000.png" width=300>
 
-A bare-metal x86-64 kernel written from scratch in Rust, targeting UEFI systems with the [Limine v8.x](https://github.com/limine-bootloader/limine) bootloader.
-Long-term goal: full Linux x86_64 ABI compatibility — run unmodified Linux ELF binaries on a kernel written entirely in Rust.
+A bare-metal kernel written from scratch in Rust, with the end goal of being drop-in compatible with the Linux kernel (ABI-compatibility).
+The intention is to be able to run unmodified linux binaries, aswell as provide more advanced capabilites
+such as intent-aware scheduling, real-time scheduling/scheduling hints ("don't preempt me for this long"), a namespaced VFS and more.
 
-`no_std`, `x86_64-unknown-none`. No OS underneath. Single Cargo workspace member at `src/kernel`.
-Architecture-specific code is isolated under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/`; the parent `mod.rs` of each selects the right submodule at compile time via `#[cfg(target_arch)]` and re-exports it, so the rest of the kernel uses architecture-independent paths.
-
-Subsystem documentation lives in [`docs/`](docs/), mirroring `src/kernel/src/`.
+The kernel lives under `src/kernel/src` as a cargo workspace member.
+Architecture-specific code is isolated under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/`;
+`mod.rs` selects the right submodule at compile time via `#[cfg(target_arch)]` and re-exports it.
 
 ---
 
@@ -29,6 +29,7 @@ profile = "debug"       # "debug" or "release"
 
 [features]
 debug-logging = true    # enable kdebug! log output
+vmm-debug-logging = true  # enable kdebug! log output from the VMM
 
 [extra_paths]
 paths = [               # directories appended to PATH at script startup
@@ -37,7 +38,7 @@ paths = [               # directories appended to PATH at script startup
 ]
 ```
 
-All sections are optional. Omit `[extra_paths]` entirely if everything is already on your PATH.
+You can omit `[extra_paths]` entirely if everything is already on your PATH.
 
 ---
 
@@ -65,6 +66,4 @@ python scripts/docs.py clean   # delete generated docs
 
 ---
 
-## License
-
-GPL-3.0-only. See [LICENSE](LICENSE).
+This project is licensed under the **GNU General Public License v3.0** (GPL-3.0-only). See [LICENSE](LICENSE) for details.
