@@ -10,7 +10,7 @@ use x86_64::structures::paging::page_table::PageTableEntry;
 use crate::kinfo;
 use crate::mem::pmm::Pmm;
 use crate::panic::kernel_panic;
-use crate::types::irq_mutex::IrqMutex;
+use crate::state::kstate::KSTATE;
 use crate::types::panic_codes::PanicCode;
 
 /// Kernel page-table state used by all VMM operations.
@@ -30,8 +30,8 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
-    pub fn init(pmm_mutex: &IrqMutex<Pmm>, hhdm_offset: u64) -> Self {
-        let mut pmm = pmm_mutex.lock();
+    pub fn init(hhdm_offset: u64) -> Self {
+        let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
         let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 

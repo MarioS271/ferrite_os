@@ -18,7 +18,7 @@ use super::subcats::cpu::Cpu;
 use super::subcats::fs::Fs;
 use super::subcats::procs::Procs;
 
-static KSTATE: KState = KState {
+pub static KSTATE: KState = KState {
     devs: Devs {},
     vdevs: VDevs {},
     sys: Sys {},
@@ -26,7 +26,7 @@ static KSTATE: KState = KState {
     net: Net {},
     ipc: Ipc {},
     sched: Sched {},
-    mm: Mm {},
+    mm: Mm::new(),
     irq: Irq {},
     time: Time {},
     cpu: Cpu::new(),

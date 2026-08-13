@@ -4,14 +4,15 @@
 //!
 //! Authors: MarioS271
 
-use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
-use crate::mem::vmm::{Vmm, PageType};
+use crate::mem::vmm::PageType;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use x86_64::VirtAddr;
 use x86_64::structures::paging::PageTableFlags;
 use linked_list_allocator::LockedHeap;
-use crate::types::irq_mutex::IrqMutex;
+use crate::state::kstate::KSTATE;
+
+// TODO: redo heap allocator properly
 
 /// First virtual address of the heap region (higher-half kernel space).
 static HEAP_BASE_ADDRESS: VirtAddr = VirtAddr::new(0xffff_8080_0000_0000);
@@ -27,9 +28,9 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 ///
 /// # Panics
 /// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
-pub fn init(pmm_mutex: &IrqMutex<Pmm>, vmm_mutex: &IrqMutex<Vmm>) {
-    let mut pmm = pmm_mutex.lock();
-    let mut vmm = vmm_mutex.lock();
+pub fn init() {
+    let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
+    let mut vmm = KSTATE.mm.vmm.get().unwrap().lock();
 
     const HUGE_PAGE_SIZE: usize = 0x200_000; // 2 MiB
     const NUM_HUGE_PAGES: usize = HEAP_SIZE / HUGE_PAGE_SIZE; // 2
