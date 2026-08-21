@@ -6,15 +6,25 @@
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
 use x86_64::PhysAddr;
+use crate::kdebug;
 use crate::mem::pmm::FRAME_SIZE;
 use crate::state::kstate::KSTATE;
 
 pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
+    #[cfg(feature = "debug-logging")]
+    let (mut total_bytes, mut total_entries) = (0u64, 0u64);
+
     for entry in memmap_response.entries() {
         if entry.type_ != MEMMAP_BOOTLOADER_RECLAIMABLE {
             continue;
+        }
+
+        #[cfg(feature = "debug-logging")]
+        {
+            total_entries += 1;
+            total_bytes += entry.length;
         }
 
         let mut base_addr = entry.base;
@@ -37,4 +47,7 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
             remaining -= block_size;
         }
     }
+
+    #[cfg(feature = "debug-logging")]
+    kdebug!("[PMM] reclaimed {} entries, {} MiB", total_entries, total_bytes / 1024 / 1024);
 }
