@@ -15,8 +15,7 @@ use crate::types::panic_codes::PanicCode;
 
 /// Kernel page-table state used by all VMM operations.
 pub struct Vmm {
-    pub plm4_ptr: *mut PageTable,
-    pub hhdm_offset: u64,
+    pub plm4_ptr: *mut PageTable
 }
 
 // Safe because Vmm is written once during init (single-threaded) and then
@@ -30,7 +29,8 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
-    pub fn init(hhdm_offset: u64) -> Self {
+    pub fn init() -> Self {
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
         let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
@@ -64,7 +64,7 @@ impl Vmm {
 
         kinfo!("Initialized VMM (Phys Addr: {phys_addr_u64:#x})");
 
-        Vmm { plm4_ptr, hhdm_offset }
+        Vmm { plm4_ptr }
     }
 }
 
@@ -72,7 +72,8 @@ impl Vmm {
 ///
 /// # Panics
 /// Panics if the PMM is out of memory.
-pub fn alloc_zeroed_frame(pmm: &mut Pmm, hhdm_offset: u64) -> PhysFrame {
+pub fn alloc_zeroed_frame(pmm: &mut Pmm) -> PhysFrame {
+    let hhdm_offset = &KSTATE.mm.hhdm_offset();
     let frame = pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic());
 
     // Safe because the PMM gives us a valid piece of memory

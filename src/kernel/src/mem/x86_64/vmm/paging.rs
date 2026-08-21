@@ -11,6 +11,7 @@ use x86_64::structures::paging::page_table::PageTableEntry;
 use super::vmm::{Vmm, alloc_zeroed_frame};
 use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
 use crate::panic::kernel_panic;
+use crate::state::kstate::KSTATE;
 use crate::types::panic_codes::PanicCode;
 
 const HUGE_PAGE_SIZE_2MIB: u64 = FRAME_SIZE * 512;
@@ -48,6 +49,8 @@ impl Vmm {
             misaligned_address_panic(page_type);
         }
 
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
+
         let lowest_iter_page = match page_type {
             PageType::Normal => 2,
             PageType::HugePage2MiB => 3,
@@ -68,11 +71,11 @@ impl Vmm {
             let entry = &mut current_pagetable.as_mut().unwrap()[index];
 
             if !entry.flags().contains(PageTableFlags::PRESENT) {
-                let frame = alloc_zeroed_frame(pmm, self.hhdm_offset);
+                let frame = alloc_zeroed_frame(pmm);
                 entry.set_frame(frame, intermediate_flags);
             }
 
-            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable;
+            current_pagetable = (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable;
         }
 
         let entry = &mut current_pagetable.as_mut().unwrap()[match page_type {
@@ -104,6 +107,7 @@ impl Vmm {
             misaligned_address_panic(PageType::Normal);
         }
 
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
@@ -113,7 +117,7 @@ impl Vmm {
             if !entry.flags().contains(PageTableFlags::PRESENT) { invalid_unmap_panic(); }
         };
         let advance_current_pagetable = |entry: &mut PageTableEntry| -> *mut PageTable {
-            (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable
+            (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable
         };
         let clear_and_flush = |entry: &mut PageTableEntry| {
             entry.set_unused();
@@ -170,6 +174,7 @@ impl Vmm {
             misaligned_address_panic(PageType::Normal);
         }
 
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut current_pagetable: *mut PageTable = self.plm4_ptr;
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
@@ -179,7 +184,7 @@ impl Vmm {
             if !entry.flags().contains(PageTableFlags::PRESENT) { invalid_remap_panic(); }
         };
         let advance_current_pagetable = |entry: &mut PageTableEntry| -> *mut PageTable {
-            (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable
+            (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable
         };
         let flush_tlb = || {
             tlb::flush(virt);
@@ -230,6 +235,7 @@ impl Vmm {
     /// Walk the page table and return the phys address mapped at `virt` or `None` if any
     /// level is not present
     pub fn translate(&self, virt: VirtAddr) -> Option<PhysAddr> {
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut current = self.plm4_ptr;
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
@@ -239,7 +245,7 @@ impl Vmm {
             entry.flags().contains(PageTableFlags::PRESENT)
         };
         let advance_current_pagetable = |entry: &PageTableEntry| -> *mut PageTable {
-            (entry.frame().unwrap().start_address().as_u64() + self.hhdm_offset) as *mut PageTable
+            (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable
         };
         let calc_offset = |mask: u64| -> u64 {
             virt.as_u64() & mask

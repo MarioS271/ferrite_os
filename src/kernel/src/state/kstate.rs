@@ -4,19 +4,19 @@
 //!
 //! Authors: MarioS271
 
-use super::subcats::dev::Devs;
-use super::subcats::vdev::VDevs;
-use super::subcats::sys::Sys;
-use super::subcats::mnt::Mounts;
-use super::subcats::net::Net;
-use super::subcats::ipc::Ipc;
-use super::subcats::sched::Sched;
-use super::subcats::mm::Mm;
-use super::subcats::irq::Irq;
-use super::subcats::time::Time;
-use super::subcats::cpu::Cpu;
-use super::subcats::fs::Fs;
-use super::subcats::procs::Procs;
+use super::subsystems::dev::Devs;
+use super::subsystems::vdev::VDevs;
+use super::subsystems::sys::Sys;
+use super::subsystems::mnt::Mounts;
+use super::subsystems::net::Net;
+use super::subsystems::ipc::Ipc;
+use super::subsystems::sched::Sched;
+use super::subsystems::mm::Mm;
+use super::subsystems::irq::Irq;
+use super::subsystems::time::Time;
+use super::subsystems::cpu::Cpu;
+use super::subsystems::fs::Fs;
+use super::subsystems::procs::Procs;
 
 pub static KSTATE: KState = KState {
     devs: Devs {},
