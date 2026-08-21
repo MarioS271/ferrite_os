@@ -70,35 +70,47 @@ extern "C" fn kmain() -> ! {
         use crate::screen::basic::framebuffer::BasicFramebuffer;
         use crate::screen::basic::font::Psf2Font;
 
-        if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response() {
-            if let Some(fb) = fb_response.framebuffers().first() {
-                SIMPLE_STATE.basic_fb.call_once(|| -> BasicFramebuffer {
-                    BasicFramebuffer::new(fb)
-                });
-                SIMPLE_STATE.basic_fb_psf2_font.call_once(|| -> Psf2Font {
-                    Psf2Font::init()
-                });
-            }
+        if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response()
+            && let Some(fb) = fb_response.framebuffers().first()
+        {
+            SIMPLE_STATE.basic_fb.call_once(|| -> BasicFramebuffer {
+                BasicFramebuffer::new(fb)
+            });
+            SIMPLE_STATE.basic_fb_psf2_font.call_once(|| -> Psf2Font {
+                Psf2Font::init()
+            });
+        } else {
+            kernel_panic(
+                PanicCode::InitFailure,
+                "Limine did not provide a valid framebuffer"
+            );
         }
+    }
+
+    if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
+        KSTATE.mm.set_hhdm_offset(hhdm_response.offset);
+    } else {
+        kernel_panic(
+            PanicCode::InitFailure,
+            "Limine did not provide a hddm offset"
+        );
     }
 
     kinfo!("Hello, FerriteOS!");
     kdebug!("Debug logging is active!");
 
-    // Init arch-specific features (GDT, IDT for x86_64, ...)
     arch::init();
 
-    {
-        // Init physical + virtual mem manager
-        if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
-            if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
-                KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries(), hhdm_response.offset)));
-                KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init(hhdm_response.offset)));
-            }
-        }
+    if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
+        KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
+        KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init()));
+    } else {
+        kernel_panic(
+            PanicCode::InitFailure,
+            "Limine did not provide an initial memmap"
+        );
     }
 
-    // Init heap allocator
     mem::heap::init();
 
     instructions::enable_interrupts();
