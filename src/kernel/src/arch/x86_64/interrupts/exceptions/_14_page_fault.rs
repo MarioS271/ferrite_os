@@ -17,7 +17,7 @@ pub extern "x86-interrupt" fn handler(
 ) {
     let cr2_value = Cr2::read_raw();
     let mut fmt_buffer = FmtBuffer::<512>::new();
-    let _ = write!(&mut fmt_buffer, "CR2: {}\nError Code:\n{:?}\n\n{:#?}", cr2_value, error_code, isf);
+    let _ = write!(&mut fmt_buffer, "CR2: {:x}\nError Code:\n{:?}\n\n{:#?}", cr2_value, error_code, isf);
     kernel_panic(
         PanicCode::PageFault,
         fmt_buffer.as_str(),
