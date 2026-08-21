@@ -17,14 +17,15 @@ mod screen;
 mod mem;
 mod state;
 mod config;
+mod init;
 
 use spin::Once;
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
-use crate::arch::instructions;
 use crate::panic::kernel_panic;
+use crate::arch::instructions;
+use crate::state::kstate::KSTATE;
 use crate::types::irq_mutex::IrqMutex;
 use crate::types::panic_codes::PanicCode;
-use crate::state::kstate::KSTATE;
 
 /// Early-boot singleton resources; written once in `kmain`, then read-only.
 ///
@@ -61,7 +62,6 @@ extern "C" fn kmain() -> ! {
     mm_init();
     instructions::enable_interrupts();
 
-
     kinfo!("Kernel ran successfully!");
 
     // To halt the kernel on finish (temporary)
@@ -95,12 +95,8 @@ fn basic_fb_init() {
     if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response()
         && let Some(fb) = fb_response.framebuffers().first()
     {
-        SIMPLE_STATE.basic_fb.call_once(|| -> BasicFramebuffer {
-            BasicFramebuffer::new(fb)
-        });
-        SIMPLE_STATE.basic_fb_psf2_font.call_once(|| -> Psf2Font {
-            Psf2Font::init()
-        });
+        SIMPLE_STATE.basic_fb.call_once(|| BasicFramebuffer::new(fb));
+        SIMPLE_STATE.basic_fb_psf2_font.call_once(|| Psf2Font::init());
     } else {
         kernel_panic(
             PanicCode::InitFailure,
@@ -125,7 +121,7 @@ fn mm_init() {
         KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
         KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init()));
 
-        
+        init::mem::reclaim_bootloader_memory(memmap_response);
     } else {
         kernel_panic(
             PanicCode::InitFailure,
