@@ -50,10 +50,3 @@ pub struct KState {
     pub fs: Fs,
     pub procs: Procs,
 }
-
-impl KState {
-    /// Return a `'static` reference to the global kernel state.
-    pub fn get() -> &'static Self {
-        &KSTATE
-    }
-}

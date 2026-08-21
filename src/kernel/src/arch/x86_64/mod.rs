@@ -9,9 +9,8 @@ mod interrupts;
 
 /// Initialize the TSS, GDT, IDT, and PIC — everything required before enabling interrupts.
 pub(crate) fn init() {
-    use crate::state::kstate::KState;
-
-    let cpu = &KState::get().cpu;
+    use crate::state::kstate::KSTATE;
+    let cpu = &KSTATE.cpu;
 
     cpu.tss[0].init();
     cpu.gdt[0].init(&cpu.tss[0]);
