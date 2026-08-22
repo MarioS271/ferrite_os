@@ -37,6 +37,8 @@ BUILD = ROOT / "build"
 ISO   = BUILD / "ferrite_os.iso"
 CACHE = BUILD / ".build_cache.json"
 
+LOG = ROOT / "run" / "latest.log"
+
 # Path to the OVMF deps
 OVMF_DIR    = ROOT / "run" / "deps" / "ovmf"
 OVMF_CODE   = OVMF_DIR / "code.fd"
@@ -50,6 +52,9 @@ CONTAINER_NAME  = "ferrite_os"
 TCP_SERIAL_PORT = 4231
 HOST            = "localhost"
 RETRY_DELAY     = 1.0
+
+# Everything before this marker in the serial stream is UEFI/firmware noise
+SERIAL_START_MARKER = b"I Hello, Ferrite"
 
 def load_config() -> dict:
     """
@@ -365,7 +370,78 @@ def run_qemu():
             except subprocess.TimeoutExpired:
                 qemu.kill()
 
+# ─── terminal helpers ──────────────────────────────────────────────────────────
+
+def _save_terminal() -> tuple:
+    """
+    Snapshot terminal state before raw serial data can corrupt it.
+    Returns (stty_state, terminal_size) — either may be None if unavailable.
+    """
+    saved_stty = None
+    saved_size = None
+
+    if sys.stdout.isatty():
+        try:
+            saved_size = os.get_terminal_size(sys.stdout.fileno())
+        except OSError:
+            pass
+
+    if sys.platform != "win32" and sys.stdin.isatty():
+        try:
+            saved_stty = subprocess.check_output(
+                ["stty", "-g"], stdin=sys.stdin, stderr=subprocess.DEVNULL
+            ).decode().strip()
+        except Exception:
+            pass
+
+    return saved_stty, saved_size
+
+
+def _restore_terminal(saved_stty: str | None, saved_size):
+    """
+    Restore terminal size and mode, then wipe the screen including scrollback.
+    """
+    # Restore window size via xterm CSI sequence (harmless if unsupported)
+    if saved_size:
+        sys.stdout.write(f"\033[8;{saved_size.lines};{saved_size.columns}t")
+
+    # Soft-reset: scroll region, text attributes, wrap mode, etc.
+    sys.stdout.write(
+        "\033[!p"   # DECSTR  – soft terminal reset
+        "\033[r"    # DECSTBM – reset scroll region to full screen
+        "\033[m"    # SGR 0   – reset all text attributes
+        "\033[?7h"  # DECAWM  – re-enable auto-wrap
+    )
+
+    # Clear visible screen + scrollback buffer so no broken serial output remains
+    sys.stdout.write(
+        "\033[H"    # cursor to row 1, col 1
+        "\033[2J"   # erase visible screen
+        "\033[3J"   # erase scrollback buffer
+    )
+    sys.stdout.flush()
+
+    # Restore the full line-discipline snapshot (baud, echo, raw mode, …)
+    if saved_stty and sys.platform != "win32":
+        try:
+            subprocess.run(
+                ["stty", saved_stty],
+                stdin=sys.stdin,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+# ─── serial streaming ──────────────────────────────────────────────────────────
+
 def stream_serial(qemu_proc):
+    saved_stty, saved_size = _save_terminal()
+
+    # Ensure the log directory exists and open the log file
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    log_file = LOG.open("wb")
+    print(f"  Logging serial output to {LOG}")
+
     print(f"  Waiting for serial on {HOST}:{TCP_SERIAL_PORT}...")
     while True:
         try:
@@ -375,45 +451,51 @@ def stream_serial(qemu_proc):
         except (ConnectionRefusedError, TimeoutError, OSError):
             if qemu_proc.poll() is not None:
                 print("  ✗ QEMU exited before serial port opened")
+                log_file.close()
+                _restore_terminal(saved_stty, saved_size)
                 return
             time.sleep(RETRY_DELAY)
 
     banner(f"Serial Output  [{HOST}:{TCP_SERIAL_PORT}]")
     try:
         with sock:
+            buf     = b""
+            started = False
             while True:
                 data = sock.recv(4096)
                 if not data:
                     break
-                sys.stdout.buffer.write(data)
-                sys.stdout.buffer.flush()
+
+                if not started:
+                    # Buffer until the kernel's first log line appears;
+                    # everything before it is UEFI/firmware noise.
+                    buf += data
+                    idx = buf.find(SERIAL_START_MARKER)
+                    if idx != -1:
+                        started = True
+                        out = buf[idx:]      # drop all pre-marker bytes
+                        sys.stdout.buffer.write(out)
+                        sys.stdout.buffer.flush()
+                        log_file.write(out)
+                        log_file.flush()
+                        buf = b""            # free the pre-marker buffer
+                    elif len(buf) > 65536:
+                        # Don't grow unboundedly — keep a tail in case the
+                        # marker is split across two recv() calls
+                        buf = buf[-len(SERIAL_START_MARKER):]
+                else:
+                    sys.stdout.buffer.write(data)
+                    sys.stdout.buffer.flush()
+                    log_file.write(data)
+                    log_file.flush()
     except (KeyboardInterrupt, ConnectionResetError):
         pass
+    finally:
+        log_file.close()
+        _restore_terminal(saved_stty, saved_size)
+
     print("\n  Serial connection closed")
-
-def clean():
-    banner("Cleaning Build")
-    removed = False
-
-    # Build artifacts live in the target_cache volume, reachable only from inside
-    # the container — clear its contents there (the volume is mounted at
-    # /ferrite_os/target; -mindepth 1 empties it without removing the mount point).
-    if container_running():
-        run_in_container("find /ferrite_os/target -mindepth 1 -delete")
-        removed = True
-    else:
-        print(f"  Container '{CONTAINER_NAME}' not running — skipping volume cleanup")
-
-    # Host-side directories: build/ is a plain host folder; target/ is a leftover
-    # from any host-side cargo builds. Both are ordinary Windows directories.
-    for d in [BUILD, ROOT / "target"]:
-        if d.exists():
-            rmtree(d)
-            print(f"  ✓ Deleted {d}")
-            removed = True
-
-    if not removed:
-        print("  Nothing to clean")
+    print(f"  Log saved to {LOG}")
 
 # ─── commands ─────────────────────────────────────────────────────────────────
 

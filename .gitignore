@@ -15,3 +15,4 @@ AGENTS.md
 /build
 /docs
 /target
+/run/*.log
