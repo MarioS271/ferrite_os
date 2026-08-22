@@ -49,7 +49,7 @@ pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
 };
 
 /// Kernel entry point called by the Limine bootloader; runs boot init and never returns.
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn kmain() -> ! {
     serial_init();
     basic_fb_init();

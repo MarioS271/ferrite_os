@@ -68,7 +68,7 @@ impl Vmm {
                 _ => unreachable!()
             };
 
-            let entry = &mut current_pagetable.as_mut().unwrap()[index];
+            let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[index] };
 
             if !entry.flags().contains(PageTableFlags::PRESENT) {
                 let frame = alloc_zeroed_frame(pmm);
@@ -78,11 +78,11 @@ impl Vmm {
             current_pagetable = (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable;
         }
 
-        let entry = &mut current_pagetable.as_mut().unwrap()[match page_type {
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[match page_type {
             PageType::Normal => virt.p1_index(),
             PageType::HugePage2MiB => virt.p2_index(),
             PageType::HugePage1GiB => virt.p3_index(),
-        }];
+        }] };
 
         if page_type == PageType::Normal {
             entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
@@ -129,12 +129,12 @@ impl Vmm {
         };
 
         // PML4
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p4_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p4_index()] };
         assert_is_present(entry);
         current_pagetable = advance_current_pagetable(entry);
 
         // PDPT
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p3_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p3_index()] };
         assert_is_present(entry);
         if is_huge_page(entry) {
             clear_and_flush(entry);
@@ -144,7 +144,7 @@ impl Vmm {
         current_pagetable = advance_current_pagetable(entry);
 
         // PD
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p2_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p2_index()] };
         assert_is_present(entry);
         if is_huge_page(entry) {
             clear_and_flush(entry);
@@ -154,7 +154,7 @@ impl Vmm {
         current_pagetable = advance_current_pagetable(entry);
 
         // PT
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p1_index()] };
         assert_is_present(entry);
         clear_and_flush(entry);
         debug_log(&virt);
@@ -195,12 +195,12 @@ impl Vmm {
         };
 
         // PML4
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p4_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p4_index()] };
         assert_is_present(entry);
         current_pagetable = advance_current_pagetable(entry);
 
         // PDPT
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p3_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p3_index()] };
         assert_is_present(entry);
         if is_huge_page(entry) {
             entry.set_addr(entry.addr(), new_flags | PageTableFlags::PRESENT | PageTableFlags::HUGE_PAGE);
@@ -211,7 +211,7 @@ impl Vmm {
         current_pagetable = advance_current_pagetable(entry);
 
         // PD
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p2_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p2_index()] };
         assert_is_present(entry);
         if is_huge_page(entry) {
             entry.set_addr(entry.addr(), new_flags | PageTableFlags::PRESENT | PageTableFlags::HUGE_PAGE);
@@ -222,7 +222,7 @@ impl Vmm {
         current_pagetable = advance_current_pagetable(entry);
 
         // PT
-        let entry = &mut current_pagetable.as_mut().unwrap()[virt.p1_index()];
+        let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p1_index()] };
         assert_is_present(entry);
         entry.set_frame(
             PhysFrame::containing_address(entry.frame().unwrap().start_address()),

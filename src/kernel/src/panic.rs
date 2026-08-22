@@ -78,7 +78,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     }
     RUST_PANIC_TRIGERRED.store(true, Ordering::Release);
 
-    let mut message_buf: FmtBuffer<128> = FmtBuffer::new();
+    let mut message_buf: FmtBuffer<512> = FmtBuffer::new();
     if panic_info.message().as_str().is_none() {
         let _ = write!(message_buf, "(No panic message given)\n\n");
     } else {
@@ -98,7 +98,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
         let serial = SIMPLE_STATE.serial.get().unwrap();
 
         serial.write("\nKernel Panic! :(\n");
-        serial.write("[!] This panic was triggered by Rust (language-triggered or via a panic!() call)\n\n");
+        serial.write("[!] This panic was triggered by Rust (runtime error or panic!() called)\n\n");
         serial.write(message_buf.as_str());
         serial.write(location_buf.as_str());
     }

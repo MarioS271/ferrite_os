@@ -91,7 +91,7 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
 /// Same contract as [`IrqMutex::force_unlock`]: only call from a panic handler that
 /// halts immediately after and never accesses [`KPRINT_STATE`] again.
 pub unsafe fn force_unlock_kprint_state() {
-    KPRINT_STATE.force_unlock();
+    unsafe { KPRINT_STATE.force_unlock(); }
 }
 
 /// RAII handle that holds the [`KPRINT_STATE`] lock for one `kprint!` call, preventing interleaved output.
