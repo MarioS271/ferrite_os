@@ -24,7 +24,6 @@ use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
 use crate::panic::kernel_panic;
 use crate::arch::instructions;
 use crate::state::kstate::KSTATE;
-use crate::types::irq_mutex::IrqMutex;
 use crate::types::panic_codes::PanicCode;
 
 /// Early-boot singleton resources; written once in `kmain`, then read-only.
@@ -59,7 +58,7 @@ extern "C" fn kmain() -> ! {
     kdebug!("Debug logging is active!");
 
     arch::init();
-    mm_init();
+    init::mem::mm_init();
     instructions::enable_interrupts();
 
     kinfo!("Kernel ran successfully!");
@@ -114,20 +113,4 @@ fn early_kstate_populate() {
             "Limine did not provide a hddm offset"
         );
     }
-}
-
-fn mm_init() {
-    if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
-        KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
-        KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init()));
-
-        init::mem::reclaim_bootloader_memory(memmap_response);
-    } else {
-        kernel_panic(
-            PanicCode::InitFailure,
-            "Limine did not provide an initial memmap"
-        );
-    }
-
-    mem::heap::init();
 }

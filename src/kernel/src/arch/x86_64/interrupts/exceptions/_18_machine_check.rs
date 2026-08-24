@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Machine-check exception handler (vector 18, `#MC`).
 //!
-//! Known limitation: `kernel_panic` takes `IrqMutex` locks, so an MCE fired while
-//! one is held can deadlock (TODO #21).
-//!
 //! Authors: MarioS271
 
 use core::fmt::Write;

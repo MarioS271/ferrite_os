@@ -5,10 +5,29 @@
 
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
-use x86_64::PhysAddr;
-use crate::kdebug;
+use crate::{kdebug, mem, LIMINE_MEMMAP_REQUEST};
 use crate::mem::pmm::FRAME_SIZE;
+use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
+use crate::types::addr::PhysAddr;
+use crate::types::irq_mutex::IrqMutex;
+use crate::types::panic_codes::PanicCode;
+
+pub fn mm_init() {
+    if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
+        KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
+        KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init()));
+
+        reclaim_bootloader_memory(memmap_response);
+    } else {
+        kernel_panic(
+            PanicCode::InitFailure,
+            "Limine did not provide an initial memmap"
+        );
+    }
+
+    mem::heap::init();
+}
 
 pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
@@ -16,19 +35,29 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     #[cfg(feature = "debug-logging")]
     let (mut total_bytes, mut total_entries) = (0u64, 0u64);
 
+    let mut entries: [(u64, u64); 128] = [(0, 0); 128];
+    let mut num_entries: usize = 0;
+
     for entry in memmap_response.entries() {
         if entry.type_ != MEMMAP_BOOTLOADER_RECLAIMABLE {
             continue;
         }
 
+        entries[num_entries] = (entry.base, entry.length);
+        num_entries += 1;
+    }
+
+    for i in 0..num_entries {
         #[cfg(feature = "debug-logging")]
         {
             total_entries += 1;
-            total_bytes += entry.length;
+            total_bytes += entries[i].1;
         }
 
-        let mut base_addr = entry.base;
-        let mut remaining = entry.length;
+        let mut base_addr = entries[i].0;
+        let mut remaining = entries[i].1;
+
+        kdebug!("[reclaim] base={:#x} len={:#x}", base_addr, remaining);
 
         while remaining >= FRAME_SIZE {
             let mut order = 10usize;
@@ -48,6 +77,5 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
         }
     }
 
-    #[cfg(feature = "debug-logging")]
-    kdebug!("[PMM] reclaimed {} entries, {} MiB", total_entries, total_bytes / 1024 / 1024);
+    kdebug!("reclaimed {} bootloader memory entries ({} MiB)", total_entries, total_bytes / 1024 / 1024);
 }

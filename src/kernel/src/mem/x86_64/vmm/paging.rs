@@ -5,13 +5,13 @@
 
 use core::fmt::{Display, Formatter};
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
-use x86_64::{PhysAddr, VirtAddr};
 use x86_64::instructions::tlb;
 use x86_64::structures::paging::page_table::PageTableEntry;
 use super::vmm::{Vmm, alloc_zeroed_frame};
 use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
+use crate::types::addr::{PhysAddr, VirtAddr};
 use crate::types::panic_codes::PanicCode;
 
 const HUGE_PAGE_SIZE_2MIB: u64 = FRAME_SIZE * 512;
@@ -85,9 +85,9 @@ impl Vmm {
         }] };
 
         if page_type == PageType::Normal {
-            entry.set_frame(PhysFrame::containing_address(phys), flags | PageTableFlags::PRESENT);
+            entry.set_frame(PhysFrame::containing_address(phys.as_x86_64()), flags | PageTableFlags::PRESENT);
         } else {
-            entry.set_addr(phys, flags | PageTableFlags::PRESENT | PageTableFlags::HUGE_PAGE);
+            entry.set_addr(phys.as_x86_64(), flags | PageTableFlags::PRESENT | PageTableFlags::HUGE_PAGE);
         }
 
         #[cfg(feature = "vmm-debug-logging")]
@@ -121,7 +121,7 @@ impl Vmm {
         };
         let clear_and_flush = |entry: &mut PageTableEntry| {
             entry.set_unused();
-            tlb::flush(virt);
+            tlb::flush(virt.as_x86_64());
         };
         let debug_log = |virt: &VirtAddr| {
             #[cfg(feature = "vmm-debug-logging")]
@@ -187,7 +187,7 @@ impl Vmm {
             (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable
         };
         let flush_tlb = || {
-            tlb::flush(virt);
+            tlb::flush(virt.as_x86_64());
         };
         let debug_log = |virt: &VirtAddr, flags: &PageTableFlags| {
             #[cfg(feature = "vmm-debug-logging")]

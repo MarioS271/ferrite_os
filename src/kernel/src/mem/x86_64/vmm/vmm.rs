@@ -3,7 +3,6 @@
 //!
 //! Authors: MarioS271
 
-use x86_64::PhysAddr;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{PageTable, PhysFrame};
 use x86_64::structures::paging::page_table::PageTableEntry;
@@ -53,7 +52,7 @@ impl Vmm {
         }
 
         let phys_addr_u64 = plm4_ptr as u64 - hhdm_offset;
-        let phys_frame = PhysFrame::containing_address(PhysAddr::new(phys_addr_u64));
+        let phys_frame = PhysFrame::containing_address(x86_64::PhysAddr::new(phys_addr_u64));
         let current_cr3_flags = Cr3::read().1;
 
         // Using the same plm4 as provided by limine before, just copied so that the kernel
@@ -81,7 +80,7 @@ pub fn alloc_zeroed_frame(pmm: &mut Pmm) -> PhysFrame {
         core::ptr::write_bytes((frame.as_u64() + hhdm_offset) as *mut PageTable, 0x00, 1);
     }
 
-    PhysFrame::from_start_address(PhysAddr::new(frame.as_u64())).unwrap()
+    PhysFrame::from_start_address(x86_64::PhysAddr::new(frame.as_u64())).unwrap()
 }
 
 /// Panic when the VMM cannot allocate a frame from the PMM.

@@ -4,11 +4,11 @@
 //!
 //! Authors: MarioS271
 
-use crate::kinfo;
-use crate::types::aligned_stack::AlignedStack;
 use spin::Once;
 use x86_64::structures::tss::TaskStateSegment;
-use x86_64::VirtAddr;
+use crate::kinfo;
+use crate::types::addr::VirtAddr;
+use crate::types::aligned_stack::AlignedStack;
 
 pub const DOUBLE_FAULT_IST_STACK_INDEX: usize = 0;
 pub const DEBUG_IST_STACK_INDEX: usize = 1;
@@ -50,10 +50,10 @@ impl Tss {
 
             self.tss.call_once(|| {
                 let mut tss = TaskStateSegment::new();
-                tss.interrupt_stack_table[DOUBLE_FAULT_IST_STACK_INDEX] = ist1_top;
-                tss.interrupt_stack_table[DEBUG_IST_STACK_INDEX] = ist2_top;
-                tss.interrupt_stack_table[NMI_IST_STACK_INDEX] = ist3_top;
-                tss.interrupt_stack_table[MACHINE_CHECK_IST_STACK_INDEX] = ist4_top;
+                tss.interrupt_stack_table[DOUBLE_FAULT_IST_STACK_INDEX] = ist1_top.as_x86_64();
+                tss.interrupt_stack_table[DEBUG_IST_STACK_INDEX] = ist2_top.as_x86_64();
+                tss.interrupt_stack_table[NMI_IST_STACK_INDEX] = ist3_top.as_x86_64();
+                tss.interrupt_stack_table[MACHINE_CHECK_IST_STACK_INDEX] = ist4_top.as_x86_64();
                 tss
             });
         }

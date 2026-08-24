@@ -4,13 +4,13 @@
 //!
 //! Authors: MarioS271
 
+use x86_64::structures::paging::PageTableFlags;
+use linked_list_allocator::LockedHeap;
 use crate::mem::vmm::PageType;
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
-use x86_64::VirtAddr;
-use x86_64::structures::paging::PageTableFlags;
-use linked_list_allocator::LockedHeap;
 use crate::state::kstate::KSTATE;
+use crate::types::addr::VirtAddr;
 
 // TODO: redo heap allocator properly
 
@@ -38,7 +38,10 @@ pub fn init() {
     unsafe {
         for page in 0..NUM_HUGE_PAGES {
             let phys = pmm.alloc(9).unwrap_or_else(
-                || kernel_panic(PanicCode::OutOfMemory, "Out of memory for heap")
+                || kernel_panic(
+                    PanicCode::OutOfMemory,
+                    "Out of memory for heap"
+                )
             );
             vmm.map_page(
                 &mut pmm,

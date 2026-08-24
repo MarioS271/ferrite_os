@@ -4,24 +4,24 @@
 //! Authors: MarioS271
 
 use crate::{kdebug, kinfo};
-use x86_64::PhysAddr;
 use limine::memmap;
 use crate::state::kstate::KSTATE;
+use crate::types::addr::PhysAddr;
 
 pub const FRAME_SIZE: u64 = 4096;
 const MAX_ORDER: usize = 10;
 const NUM_ORDERS: usize = MAX_ORDER + 1;
 
-/// Buddy-Allocator based tracker of free and used physical frames.
+/// Buddy-Allocator based tracker of free and head physical frames.
 pub struct Pmm {
-    free: [Option<PhysAddr>; 11]
+    head: [Option<PhysAddr>; 11]
 }
 
 impl Pmm {
     /// Initialize the PMM from the Limine memory map, coalescing usable frames into the buddy free lists.
     pub fn init(entries: &[&memmap::Entry]) -> Self {
         let mut pmm = Pmm {
-            free: [None; NUM_ORDERS]
+            head: [None; NUM_ORDERS]
         };
 
         #[cfg(feature = "debug-logging")]
@@ -86,13 +86,13 @@ impl Pmm {
     pub fn alloc(&mut self, order: usize) -> Option<PhysAddr> {
         if order > 10 { return None; }
 
-        if self.free[order] != None {
+        if self.head[order] != None {
             return self.pop(order);
         }
 
         let mut current: usize = MAX_ORDER;
         for o in order..=MAX_ORDER {
-            if self.free[o] != None {
+            if self.head[o] != None {
                 current = o;
                 break;
             }
@@ -118,23 +118,24 @@ impl Pmm {
 
     /// Return a block of `FRAME_SIZE << order` bytes to the free lists, merging with available buddies
     pub fn free(&mut self, mut addr: PhysAddr, mut order: usize) {
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
+
         while order < MAX_ORDER {
-            let hhdm_offset = &KSTATE.mm.hhdm_offset();
             let buddy = PhysAddr::new(addr.as_u64() ^ (FRAME_SIZE << order));
 
-            let mut current = self.free[order];
-            let mut prev_ptr = &mut self.free[order] as *mut Option<PhysAddr>;
+            let mut current = self.head[order];
+            let mut prev_block: Option<PhysAddr>;
             let mut found = false;
 
             while let Some(node) = current {
                 if node == buddy {
-                    // Safe: node is a valid free block; first 8 bytes hold the next pointer written by push()
-                    let next = unsafe {
+                    // Safe: node is a valid free block; first 8 bytes hold the next pointer written by push();
+                    //       prev_ptr points to either free[order] or a next-pointer field in a free block, both valid via &mut self
+                    unsafe {
                         let val = core::ptr::read((node.as_u64() + hhdm_offset) as *const u64);
-                        if val == 0 { None } else { Some(PhysAddr::new(val)) }
+                        // TODO: fix head case
+                        *(prev_ptr as *mut u64) = val;
                     };
-                    // Safe: prev_ptr points to either free[order] or a next-pointer field in a free block, both valid via &mut self
-                    unsafe { *prev_ptr = next; }
                     found = true;
                     break;
                 }
@@ -166,7 +167,7 @@ impl Pmm {
     /// Remove and return the head block from the order-`order` free list, or `None` if empty.
     fn pop(&mut self, order: usize) -> Option<PhysAddr> {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let head = self.free[order]?;
+        let head = self.head[order]?;
         let result;
 
         unsafe {
@@ -177,9 +178,9 @@ impl Pmm {
             );
         }
         if result == 0 {
-            self.free[order] = None;
+            self.head[order] = None;
         } else {
-            self.free[order] = Some(PhysAddr::new(result));
+            self.head[order] = Some(PhysAddr::new(result));
         }
 
         Some(head)
@@ -194,10 +195,10 @@ impl Pmm {
         unsafe {
             core::ptr::write(
                 (addr.as_u64() + hhdm_offset) as *mut u64,
-                 self.free[order].map_or(0, |addr| addr.as_u64())
+                 self.head[order].map_or(0, |addr| addr.as_u64())
             );
         }
 
-        self.free[order] = Some(addr);
+        self.head[order] = Some(addr);
     }
 }

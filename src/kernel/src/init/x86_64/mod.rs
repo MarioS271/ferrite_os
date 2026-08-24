@@ -3,4 +3,4 @@
 //!
 //! Authors: MarioS271
 
-pub mod mem;
+pub(crate) mod mem;
