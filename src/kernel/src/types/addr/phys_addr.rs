@@ -5,7 +5,7 @@
 
 use core::fmt::{Display, Debug, UpperHex, LowerHex};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
-use crate::types::addr::VirtAddr;
+use crate::state::kstate::KSTATE;
 
 /// A type representing physical addresses in the CPU's physical address space
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -31,6 +31,26 @@ impl PhysAddr {
     /// Returns the address as a `usize`
     pub fn as_usize(self) -> usize {
         self.0 as usize
+    }
+
+    /// Returns the address as a `*const T` pointer
+    pub fn as_ptr<T>(self) -> *const T {
+        self.0 as *const T
+    }
+
+    /// Returns the address as a `*mut T` pointer
+    pub fn as_mut_ptr<T>(self) -> *mut T {
+        self.0 as *mut T
+    }
+
+    /// Returns the address as a `*const T` pointer with the HHDM offset added
+    pub fn as_hhdm_ptr<T>(self) -> *const T {
+        (self.0 + KSTATE.mm.hhdm_offset()) as *const T
+    }
+
+    /// Returns the address as a `*mut T` pointer with the HHDM offset added
+    pub fn as_mut_hhdm_ptr<T>(self) -> *mut T {
+        (self.0 + KSTATE.mm.hhdm_offset()) as *mut T
     }
 
     /// Returns a new address aligned to the next larger address which is aligned to `align`
