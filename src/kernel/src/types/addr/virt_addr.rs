@@ -13,7 +13,7 @@ pub struct VirtAddr(u64);
 
 impl VirtAddr {
     /// Creates a new `VirtAddr` from a raw `u64` address
-    pub fn new(addr: u64) -> Self {
+    pub const fn new(addr: u64) -> Self {
         Self(addr)
     }
 

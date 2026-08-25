@@ -14,7 +14,7 @@ pub struct PhysAddr(u64);
 
 impl PhysAddr {
     /// Creates a new `PhysAddr` from a raw `u64` address
-    pub fn new(addr: u64) -> Self {
+    pub const fn new(addr: u64) -> Self {
         Self(addr)
     }
 
