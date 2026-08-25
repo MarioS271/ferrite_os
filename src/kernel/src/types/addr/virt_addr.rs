@@ -17,6 +17,11 @@ impl VirtAddr {
         Self(addr)
     }
 
+    /// Creates a new `VirtAddr` which points to 0
+    pub const fn null() -> Self {
+        Self(0)
+    }
+
     /// Creates a new `VirtAddr` from a `*const T` or `*mut T` pointer
     pub fn from_ptr<T>(ptr: *const T) -> Self {
         Self(ptr as u64)

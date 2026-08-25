@@ -18,6 +18,11 @@ impl PhysAddr {
         Self(addr)
     }
 
+    /// Creates a new `PhysAddr` which points to 0
+    pub const fn null() -> Self {
+        Self(0)
+    }
+
     /// Returns the address as a `u64`
     pub fn as_u64(self) -> u64 {
         self.0
