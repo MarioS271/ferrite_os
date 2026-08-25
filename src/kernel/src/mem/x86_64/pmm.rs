@@ -118,41 +118,37 @@ impl Pmm {
 
     /// Return a block of `FRAME_SIZE << order` bytes to the free lists, merging with available buddies
     pub fn free(&mut self, mut addr: PhysAddr, mut order: usize) {
-        let hhdm_offset = &KSTATE.mm.hhdm_offset();
+        'outer: while order < MAX_ORDER {
+            if self.head[order].is_none() {
+                break;
+            }
 
-        while order < MAX_ORDER {
             let buddy = PhysAddr::new(addr.as_u64() ^ (FRAME_SIZE << order));
+            let mut current_node_addr = self.head[order].unwrap();
+            let mut prev_node_addr = PhysAddr::null();
 
-            let mut current = self.head[order];
-            let mut prev_block: Option<PhysAddr>;
-            let mut found = false;
+            loop {
+                let next_node_addr: u64 = unsafe { core::ptr::read(current_node_addr.as_hhdm_ptr()) };
 
-            while let Some(node) = current {
-                if node == buddy {
-                    // Safe: node is a valid free block; first 8 bytes hold the next pointer written by push();
-                    //       prev_ptr points to either free[order] or a next-pointer field in a free block, both valid via &mut self
-                    unsafe {
-                        let val = core::ptr::read((node.as_u64() + hhdm_offset) as *const u64);
-                        // TODO: fix head case
-                        *(prev_ptr as *mut u64) = val;
-                    };
-                    found = true;
+                if current_node_addr == buddy {
+                    if prev_node_addr.as_u64() == 0 {
+                        self.head[order] = Some(PhysAddr::new(next_node_addr));
+                    }
+                    else {
+                        unsafe { core::ptr::write(prev_node_addr.as_mut_hhdm_ptr(), next_node_addr) };
+                    }
                     break;
                 }
 
-                prev_ptr = (node.as_u64() + hhdm_offset) as *mut Option<PhysAddr>;
-
-                // Safe: HHDM maps all usable memory; next pointer was written by push(), 0 = end of list
-                current = unsafe {
-                    let val = core::ptr::read((node.as_u64() + hhdm_offset) as *const u64);
-                    if val == 0 { None } else { Some(PhysAddr::new(val)) }
-                };
+                if next_node_addr == 0 {
+                    break 'outer;
+                }
+                prev_node_addr = current_node_addr;
+                current_node_addr = PhysAddr::new(next_node_addr);
             }
 
-            if !found { break; }
-
-            addr = PhysAddr::new(addr.as_u64().min(buddy.as_u64()));
             order += 1;
+            addr = PhysAddr::new(core::cmp::min(addr.as_u64(), buddy.as_u64()));
         }
 
         self.push(order, addr);
