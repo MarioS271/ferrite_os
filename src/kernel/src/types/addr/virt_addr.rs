@@ -3,6 +3,7 @@
 //!
 //! Authors: MarioS271
 
+use core::fmt::{Display, Debug, UpperHex, LowerHex, Pointer};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// A type representing virtual addresses in the CPU's virtual address space
@@ -148,5 +149,36 @@ impl SubAssign<VirtAddr> for VirtAddr {
     /// `SubAssign` trait for sub-assigning a `VirtAddr` from a `VirtAddr`
     fn sub_assign(&mut self, rhs: VirtAddr) {
         self.0 -= rhs.0
+    }
+}
+
+impl Display for VirtAddr {
+    /// Formats the address as `0x<hex>` (e.g. `0xffff800000000000`)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#x}", self.0)
+    }
+}
+impl Debug for VirtAddr {
+    /// Formats the address as `VirtAddr(0x<hex>)` (e.g. `VirtAddr(0xffff800000000000)`)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "VirtAddr({:#x})", self.0)
+    }
+}
+impl LowerHex for VirtAddr {
+    /// Delegates to the inner `u64` for `{:x}` / `{:#x}` to work
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        LowerHex::fmt(&self.0, f)
+    }
+}
+impl UpperHex for VirtAddr {
+    /// Delegates to the inner `u64` for `{:X}` / `{:#X}` to work
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        UpperHex::fmt(&self.0, f)
+    }
+}
+impl Pointer for VirtAddr {
+    /// Delegates to the inner `u64`, cast to `*const ()` for `{:p}` to work
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        Pointer::fmt(&(self.0 as *const ()), f)
     }
 }

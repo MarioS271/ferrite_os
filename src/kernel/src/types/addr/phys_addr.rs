@@ -3,6 +3,7 @@
 //!
 //! Authors: MarioS271
 
+use core::fmt::{Display, Debug, UpperHex, LowerHex};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::types::addr::VirtAddr;
 
@@ -114,5 +115,30 @@ impl SubAssign<PhysAddr> for PhysAddr {
     /// `SubAssign` trait for sub-assigning a `PhysAddr` from a `PhysAddr`
     fn sub_assign(&mut self, rhs: PhysAddr) {
         self.0 -= rhs.0
+    }
+}
+
+impl Display for PhysAddr {
+    /// Formats the address as `0x<hex>` (e.g. `0x1000`)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#x}", self.0)
+    }
+}
+impl Debug for PhysAddr {
+    /// Formats the address as `PhysAddr(0x<hex>)` (e.g. `PhysAddr(0x1000)`)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "PhysAddr({:#x})", self.0)
+    }
+}
+impl LowerHex for PhysAddr {
+    /// Delegates to the inner `u64` for `{:x}` / `{:#x}` to work
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        LowerHex::fmt(&self.0, f)
+    }
+}
+impl UpperHex for PhysAddr {
+    /// Delegates to the inner `u64` for `{:X}` / `{:#X}` to work
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        UpperHex::fmt(&self.0, f)
     }
 }
