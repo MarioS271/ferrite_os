@@ -35,7 +35,9 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     #[cfg(feature = "debug-logging")]
     let (mut total_bytes, mut total_entries) = (0u64, 0u64);
 
-    let mut entries: [(u64, u64); 128] = [(0, 0); 128];
+    const MAX_ENTRIES: usize = 256;
+
+    let mut entries: [(u64, u64); MAX_ENTRIES] = [(0, 0); MAX_ENTRIES];
     let mut num_entries: usize = 0;
 
     for entry in memmap_response.entries() {
@@ -45,6 +47,13 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
 
         entries[num_entries] = (entry.base, entry.length);
         num_entries += 1;
+    }
+
+    if num_entries >= MAX_ENTRIES {
+        kernel_panic(
+            PanicCode::InitFailure,
+            "Found more reclaimable bootloader entries than currently supported"
+        );
     }
 
     for i in 0..num_entries {
