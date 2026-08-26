@@ -10,12 +10,11 @@ use crate::kinfo;
 use crate::mem::pmm::Pmm;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
+use crate::types::addr::PhysAddr;
 use crate::types::panic_codes::PanicCode;
 
 /// Kernel page-table state used by all VMM operations.
-pub struct Vmm {
-    pub plm4_ptr: *mut PageTable
-}
+pub struct Vmm;
 
 // Safe because Vmm is written once during init (single-threaded) and then
 // only read after that.
@@ -23,47 +22,46 @@ unsafe impl Send for Vmm {}
 unsafe impl Sync for Vmm {}
 
 impl Vmm {
-    // TODO: refactor to be reusable instead of only initing the kernel page table
-    /// Initialize the VMM and install a kernel-owned PML4 into CR3.
+    /// Initialize the kernel PML4 and load it into CR3
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
-    pub fn init() -> Self {
+    pub fn setup_kernel_paging() -> PhysAddr {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
-        let limine_plm4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
+        let limine_pml4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 
-        let plm4_ptr = (
+        let kernel_pml4_ptr = (
             pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
         ) as *mut PageTable;
 
         // Safe because the PMM gives us a valid piece of memory
         unsafe {
-            core::ptr::write_bytes(plm4_ptr, 0x00, 1);
+            core::ptr::write_bytes(kernel_pml4_ptr, 0x00, 1);
         }
 
         unsafe {
             core::ptr::copy_nonoverlapping(
-                (limine_plm4_ptr as *const PageTableEntry).add(256),
-                (plm4_ptr as *mut PageTableEntry).add(256),
+                (limine_pml4_ptr as *const PageTableEntry).add(256),
+                (kernel_pml4_ptr as *mut PageTableEntry).add(256),
                 256
             );
         }
 
-        let phys_addr_u64 = plm4_ptr as u64 - hhdm_offset;
+        let phys_addr_u64 = kernel_pml4_ptr as u64 - hhdm_offset;
         let phys_frame = PhysFrame::containing_address(x86_64::PhysAddr::new(phys_addr_u64));
         let current_cr3_flags = Cr3::read().1;
 
-        // Using the same plm4 as provided by limine before, just copied so that the kernel
+        // Using the same PML4 as provided by limine before, just copied so that the kernel
         // is able to own it (limine's plm4 was safe and functional)
         unsafe {
             Cr3::write(phys_frame, current_cr3_flags);
         }
 
-        kinfo!("Initialized VMM (Phys Addr: {phys_addr_u64:#x})");
+        kinfo!("Initialized kernel PML4 (Phys Addr: {phys_addr_u64:#x})");
 
-        Vmm { plm4_ptr }
+        PhysAddr::new(phys_addr_u64)
     }
 }
 
@@ -71,7 +69,7 @@ impl Vmm {
 ///
 /// # Panics
 /// Panics if the PMM is out of memory.
-pub fn alloc_zeroed_frame(pmm: &mut Pmm) -> PhysFrame {
+pub(super) fn alloc_zeroed_frame(pmm: &mut Pmm) -> PhysFrame {
     let hhdm_offset = &KSTATE.mm.hhdm_offset();
     let frame = pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic());
 
@@ -84,7 +82,7 @@ pub fn alloc_zeroed_frame(pmm: &mut Pmm) -> PhysFrame {
 }
 
 /// Panic when the VMM cannot allocate a frame from the PMM.
-pub fn out_of_memory_panic() -> ! {
+pub(super) fn out_of_memory_panic() -> ! {
     kernel_panic(
         PanicCode::OutOfMemory,
         "VMM could not allocate a frame, out of memory",

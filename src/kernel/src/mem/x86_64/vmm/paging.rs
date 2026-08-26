@@ -43,7 +43,14 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM runs out of frames when allocating an intermediate page table.
-    pub unsafe fn map_page(&self, pmm: &mut Pmm, virt: VirtAddr, phys: PhysAddr, page_type: PageType, flags: PageTableFlags) {
+    pub unsafe fn map_page(
+        pmm: &mut Pmm,
+        pml4_ptr: PhysAddr,
+        virt: VirtAddr,
+        phys: PhysAddr,
+        page_type: PageType,
+        flags: PageTableFlags
+    ) {
         let align = &(page_type as u64);
         if phys.as_u64() % align != 0 || virt.as_u64() % align != 0 {
             misaligned_address_panic(page_type);
@@ -57,7 +64,7 @@ impl Vmm {
             PageType::HugePage1GiB => 4
         };
 
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
         for level in (lowest_iter_page..=4).rev() {
@@ -102,13 +109,16 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn unmap_page(&self, virt: VirtAddr) {
+    pub unsafe fn unmap_page(
+        pml4_ptr: PhysAddr,
+        virt: VirtAddr
+    ) {
         if virt.as_u64() % FRAME_SIZE != 0 {
             misaligned_address_panic(PageType::Normal);
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -169,13 +179,17 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn remap_page(&self, virt: VirtAddr, new_flags: PageTableFlags) {
+    pub unsafe fn remap_page(
+        pml4_ptr: PhysAddr,
+        virt: VirtAddr,
+        new_flags: PageTableFlags
+    ) {
         if virt.as_u64() % FRAME_SIZE != 0 {
             misaligned_address_panic(PageType::Normal);
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = self.plm4_ptr;
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -234,9 +248,12 @@ impl Vmm {
 
     /// Walk the page table and return the phys address mapped at `virt` or `None` if any
     /// level is not present
-    pub fn translate(&self, virt: VirtAddr) -> Option<PhysAddr> {
+    pub fn translate(
+        pml4_ptr: PhysAddr,
+        virt: VirtAddr
+    ) -> Option<PhysAddr> {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current = self.plm4_ptr;
+        let mut current = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
