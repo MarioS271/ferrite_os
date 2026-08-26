@@ -5,15 +5,14 @@
 
 use core::sync::atomic::{AtomicU64, Ordering};
 use spin::once::Once;
-use crate::mem::pmm::Pmm;
-use crate::mem::vmm::Vmm;
+use crate::mem::{pmm::Pmm, address_space::AddressSpace};
 use crate::types::irq_mutex::IrqMutex;
 
 /// Holds memory management state such as slab allocators and virtual memory areas.
 pub struct Mm {
     hhdm_offset: AtomicU64,
     pub pmm: Once<IrqMutex<Pmm>>,
-    pub vmm: Once<IrqMutex<Vmm>>
+    pub kernel_addr_space: Once<AddressSpace>
 }
 
 impl Mm {
@@ -22,7 +21,7 @@ impl Mm {
         Self {
             hhdm_offset: AtomicU64::new(0),
             pmm: Once::new(),
-            vmm: Once::new()
+            kernel_addr_space: Once::new()
         }
     }
 

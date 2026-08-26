@@ -6,11 +6,11 @@
 
 use x86_64::structures::paging::PageTableFlags;
 use linked_list_allocator::LockedHeap;
-use crate::mem::vmm::PageType;
+use crate::mem::vmm::{PageType, Vmm};
 use crate::panic::kernel_panic;
 use crate::types::panic_codes::PanicCode;
 use crate::state::kstate::KSTATE;
-use crate::types::addr::VirtAddr;
+use crate::types::addr::{PhysAddr, VirtAddr};
 
 // TODO: redo heap allocator properly
 
@@ -28,9 +28,8 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 ///
 /// # Panics
 /// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
-pub fn init() {
+pub fn init(kernel_root_page: PhysAddr) {
     let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
-    let mut vmm = KSTATE.mm.vmm.get().unwrap().lock();
 
     const HUGE_PAGE_SIZE: usize = 0x200_000; // 2 MiB
     const NUM_HUGE_PAGES: usize = HEAP_SIZE / HUGE_PAGE_SIZE; // 2
@@ -43,8 +42,9 @@ pub fn init() {
                     "Out of memory for heap"
                 )
             );
-            vmm.map_page(
+            Vmm::map_page(
                 &mut pmm,
+                kernel_root_page,
                 HEAP_BASE_ADDRESS + (page * HUGE_PAGE_SIZE) as u64,
                 phys,
                 PageType::HugePage2MiB,

@@ -6,6 +6,7 @@
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
 use crate::{kdebug, mem, LIMINE_MEMMAP_REQUEST};
+use crate::mem::address_space::AddressSpace;
 use crate::mem::pmm::FRAME_SIZE;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
@@ -14,9 +15,11 @@ use crate::types::irq_mutex::IrqMutex;
 use crate::types::panic_codes::PanicCode;
 
 pub fn mm_init() {
+    let kernel_root_page;
+    
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
         KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
-        KSTATE.mm.vmm.call_once(|| IrqMutex::new(mem::vmm::Vmm::init()));
+        kernel_root_page = mem::vmm::Vmm::setup_kernel_paging();
 
         reclaim_bootloader_memory(memmap_response);
     } else {
@@ -26,7 +29,8 @@ pub fn mm_init() {
         );
     }
 
-    mem::heap::init();
+    mem::heap::init(kernel_root_page);
+    KSTATE.mm.kernel_addr_space.call_once(|| AddressSpace::new(kernel_root_page));
 }
 
 pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
