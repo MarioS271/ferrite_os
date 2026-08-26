@@ -16,7 +16,7 @@ pub struct Mm {
 }
 
 impl Mm {
-    /// Construct with an empty pmm and vmm
+    /// Constructor; initializes all values zeroed or empty
     pub const fn new() -> Self {
         Self {
             hhdm_offset: AtomicU64::new(0),
