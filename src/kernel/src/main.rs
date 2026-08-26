@@ -26,10 +26,7 @@ use crate::arch::instructions;
 use crate::state::kstate::KSTATE;
 use crate::types::panic_codes::PanicCode;
 
-/// Early-boot singleton resources; written once in `kmain`, then read-only.
-///
-/// Kept separate from [`KState`] so the panic handler still has a reliable source
-/// of state if `KState` is unavailable.
+/// Data structure for keeping the serial logger and basic fb resources for early boot and panic
 struct SimpleKernelState {
     serial: Once<logging::serial::Serial>,
     basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,
@@ -40,14 +37,14 @@ static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
-/// Global early-boot state, readable from anywhere in the kernel once initialized.
+/// Data structure for keeping the serial logger and basic fb resources for early boot and panic
 pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     serial: Once::new(),
     basic_fb: Once::new(),
     basic_fb_psf2_font: Once::new(),
 };
 
-/// Kernel entry point called by the Limine bootloader; runs boot init and never returns.
+/// Kernel entry point
 #[unsafe(no_mangle)]
 extern "C" fn kmain() -> ! {
     serial_init();
@@ -71,6 +68,7 @@ extern "C" fn kmain() -> ! {
     }
 }
 
+/// Initializes COM1
 fn serial_init() {
     use logging::serial::Serial;
     use logging::_serial::{SerialPort, _Serial};
@@ -87,6 +85,7 @@ fn serial_init() {
     }
 }
 
+/// Initializes the Basic Framebuffer
 fn basic_fb_init() {
     use crate::screen::basic::framebuffer::BasicFramebuffer;
     use crate::screen::basic::font::Psf2Font;
@@ -104,6 +103,7 @@ fn basic_fb_init() {
     }
 }
 
+/// Populates KSTATE with early available info such as the hhdm offset
 fn early_kstate_populate() {
     if let Some(hhdm_response) = LIMINE_HHDM_REQUEST.response() {
         KSTATE.mm.set_hhdm_offset(hhdm_response.offset);
