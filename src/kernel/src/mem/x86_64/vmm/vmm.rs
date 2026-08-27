@@ -16,11 +16,6 @@ use crate::types::panic_codes::PanicCode;
 /// Kernel page-table state used by all VMM operations.
 pub struct Vmm;
 
-// Safe because Vmm is written once during init (single-threaded) and then
-// only read after that.
-unsafe impl Send for Vmm {}
-unsafe impl Sync for Vmm {}
-
 impl Vmm {
     /// Initialize the kernel PML4 and load it into CR3
     ///
