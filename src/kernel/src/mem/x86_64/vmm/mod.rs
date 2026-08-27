@@ -4,8 +4,8 @@
 //! Authors: MarioS271
 
 mod vmm;
-mod paging;
 mod vma;
+mod paging;
+mod page_type;
 
 pub use vmm::*;
-pub use paging::*;

@@ -3,36 +3,16 @@
 //!
 //! Authors: MarioS271
 
-use core::fmt::{Display, Formatter};
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 use x86_64::instructions::tlb;
 use x86_64::structures::paging::page_table::PageTableEntry;
+use super::page_type::{PageType, HUGE_PAGE_SIZE_1GIB, HUGE_PAGE_SIZE_2MIB};
 use super::vmm::{Vmm, alloc_zeroed_frame};
 use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::{PhysAddr, VirtAddr};
 use crate::types::panic_codes::PanicCode;
-
-const HUGE_PAGE_SIZE_2MIB: u64 = FRAME_SIZE * 512;
-const HUGE_PAGE_SIZE_1GIB: u64 = HUGE_PAGE_SIZE_2MIB * 512;
-
-#[repr(u64)]
-#[derive(Copy, Clone, PartialEq)]
-pub enum PageType {
-    Normal = FRAME_SIZE,
-    HugePage2MiB = HUGE_PAGE_SIZE_2MIB,
-    HugePage1GiB = HUGE_PAGE_SIZE_1GIB
-}
-impl Display for PageType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", match self {
-            PageType::Normal => "Normal(4KiB)",
-            PageType::HugePage2MiB => "HugePage(2MiB)",
-            PageType::HugePage1GiB => "HugePage(1GiB)",
-        })
-    }
-}
 
 impl Vmm {
     /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.

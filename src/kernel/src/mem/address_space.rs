@@ -5,7 +5,7 @@
 
 use alloc::collections::BTreeSet;
 use crate::mem::vma::Vma;
-use crate::types::addr::{PhysAddr, VirtAddr};
+use crate::types::addr::VirtAddr;
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs
 pub struct AddressSpace {
