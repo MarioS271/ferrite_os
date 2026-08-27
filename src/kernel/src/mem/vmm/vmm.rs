@@ -5,3 +5,8 @@
 
 /// Namespace for all VMM methods
 pub struct Vmm;
+
+/// Error type for VMM operations
+pub enum VmmError {
+    VmaOverlap
+}

@@ -16,6 +16,29 @@ pub struct Vma {
     pub flags: VmaFlags
 }
 
+impl Vma {
+    /// Checks whether the VMA contains/manages a specific address
+    pub fn contains(&self, addr: VirtAddr) -> bool {
+        if addr >= self.start_addr && addr < self.end_addr {
+            return true;
+        }
+        false
+    }
+
+    /// Returns the size of memory that is managed by this VMA
+    pub fn size(&self) -> u64 {
+        self.end_addr.as_u64() - self.start_addr.as_u64()
+    }
+
+    /// Check whether two VMAs overlap
+    pub fn overlaps(&self, other: &Vma) -> bool {
+        if (self.end_addr <= other.start_addr) || (other.end_addr <= self.start_addr) {
+            return false;
+        }
+        true
+    }
+}
+
 impl Borrow<VirtAddr> for Vma {
     /// Returns a reference to [`Vma::start_addr`] to make it possible for `BTreeSet` to compare it with a `VirtAddr` directly
     fn borrow(&self) -> &VirtAddr {
