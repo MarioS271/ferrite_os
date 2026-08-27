@@ -45,7 +45,7 @@ impl Vmm {
     /// Panics if the PMM runs out of frames when allocating an intermediate page table.
     pub unsafe fn map_page(
         pmm: &mut Pmm,
-        pml4_ptr: PhysAddr,
+        pml4_ptr: VirtAddr,
         virt: VirtAddr,
         phys: PhysAddr,
         page_type: PageType,
@@ -64,7 +64,7 @@ impl Vmm {
             PageType::HugePage1GiB => 4
         };
 
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
         for level in (lowest_iter_page..=4).rev() {
@@ -110,7 +110,7 @@ impl Vmm {
     /// # Panics
     /// Panics if any level of the walk is not present (page was never mapped).
     pub unsafe fn unmap_page(
-        pml4_ptr: PhysAddr,
+        pml4_ptr: VirtAddr,
         virt: VirtAddr
     ) {
         if virt.as_u64() % FRAME_SIZE != 0 {
@@ -118,7 +118,7 @@ impl Vmm {
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -180,7 +180,7 @@ impl Vmm {
     /// # Panics
     /// Panics if any level of the walk is not present (page was never mapped).
     pub unsafe fn remap_page(
-        pml4_ptr: PhysAddr,
+        pml4_ptr: VirtAddr,
         virt: VirtAddr,
         new_flags: PageTableFlags
     ) {
@@ -189,7 +189,7 @@ impl Vmm {
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -249,11 +249,11 @@ impl Vmm {
     /// Walk the page table and return the phys address mapped at `virt` or `None` if any
     /// level is not present
     pub fn translate(
-        pml4_ptr: PhysAddr,
+        pml4_ptr: VirtAddr,
         virt: VirtAddr
     ) -> Option<PhysAddr> {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current = pml4_ptr.as_mut_hhdm_ptr::<PageTable>();
+        let mut current = pml4_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)

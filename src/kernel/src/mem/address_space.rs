@@ -9,13 +9,13 @@ use crate::types::addr::{PhysAddr, VirtAddr};
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs
 pub struct AddressSpace {
-    pub root_table_ptr: PhysAddr,
+    pub root_table_ptr: VirtAddr,
     pub vmas: BTreeSet<Vma>,
 }
 
 impl AddressSpace {
     /// Creates a new `AddressSpace` instance which contains the given page table pointer and no VMAs
-    pub fn new(root_table_ptr: PhysAddr) -> Self {
+    pub fn new(root_table_ptr: VirtAddr) -> Self {
         Self {
             root_table_ptr,
             vmas: BTreeSet::new()
@@ -23,7 +23,7 @@ impl AddressSpace {
     }
 
     /// Getter for [`Vma::root_table_ptr`]
-    pub fn get_root_table_ptr(&self) -> PhysAddr {
+    pub fn get_root_table_ptr(&self) -> VirtAddr {
         self.root_table_ptr
     }
 

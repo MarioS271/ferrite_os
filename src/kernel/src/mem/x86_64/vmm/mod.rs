@@ -5,6 +5,7 @@
 
 mod vmm;
 mod paging;
+mod vma;
 
 pub use vmm::*;
 pub use paging::*;

@@ -10,7 +10,7 @@ use crate::kinfo;
 use crate::mem::pmm::Pmm;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
-use crate::types::addr::PhysAddr;
+use crate::types::addr::{PhysAddr, VirtAddr};
 use crate::types::panic_codes::PanicCode;
 
 /// Kernel page-table state used by all VMM operations.
@@ -26,7 +26,7 @@ impl Vmm {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate the PML4 frame (out of memory).
-    pub fn setup_kernel_paging() -> PhysAddr {
+    pub fn setup_kernel_paging() -> VirtAddr {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
@@ -61,7 +61,7 @@ impl Vmm {
 
         kinfo!("Initialized kernel PML4 (Phys Addr: {phys_addr_u64:#x})");
 
-        PhysAddr::new(phys_addr_u64)
+        VirtAddr::new(kernel_pml4_ptr as u64)
     }
 }
 

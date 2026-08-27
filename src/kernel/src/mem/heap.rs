@@ -28,7 +28,7 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 ///
 /// # Panics
 /// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
-pub fn init(kernel_root_page: PhysAddr) {
+pub fn init(kernel_root_page: VirtAddr) {
     let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
 
     const HUGE_PAGE_SIZE: usize = 0x200_000; // 2 MiB
