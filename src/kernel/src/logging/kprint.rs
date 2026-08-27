@@ -75,11 +75,8 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
 
             // Safe: iteration range is within framebuffer bounds
             unsafe {
-                let start = (fb.height as usize - font.glyph_height()) * fb.bytes_per_row as usize;
-                let end = fb.height as usize * fb.bytes_per_row as usize;
-                for i in start..end {
-                    fb.fb_pointer.add(i).write_volatile(0u32);
-                }
+                let start = fb.fb_pointer.add((fb.height as usize - font.glyph_height()) * fb.bytes_per_row as usize);
+                core::ptr::write_bytes(start, 0u8, fb.bytes_per_row as usize * font.glyph_height());
             }
         }
     }

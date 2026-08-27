@@ -9,9 +9,7 @@ unsafe impl Sync for BasicFramebuffer {}
 
 /// A thin wrapper around the Limine-provided linear framebuffer.
 pub struct BasicFramebuffer {
-    /// Pointer to the first pixel; pixels are row-major, `bytes_per_row` per row.
     pub fb_pointer: *mut u32,
-    /// Number of 32-bit pixels per row (Limine pitch / 4).
     pub bytes_per_row: u32,
     pub width: u64,
     pub height: u64,
@@ -30,16 +28,8 @@ impl BasicFramebuffer {
 
     /// Write zero (black) to every pixel in the framebuffer.
     pub fn clear(&self) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                // Safe because we're iterating inside the given fb bounds and only
-                // changing memory there
-                unsafe {
-                    self.fb_pointer
-                        .add(y as usize * self.bytes_per_row as usize + x as usize)
-                        .write_volatile(0u32);
-                }
-            }
+        unsafe {
+            core::ptr::write_bytes(self.fb_pointer, 0u8, (self.bytes_per_row as u64 * self.height) as usize);
         }
     }
 }
