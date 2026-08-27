@@ -3,10 +3,10 @@
 //!
 //! Authors: MarioS271
 
+use crate::types::addr::VirtAddr;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::ops::{BitAnd, BitOr};
-use crate::types::addr::VirtAddr;
 
 /// A type representing virtual memory areas
 /// > **Important**: `end_addr` is exclusive

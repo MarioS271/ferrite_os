@@ -3,27 +3,65 @@
 //!
 //! Authors: MarioS271
 
-use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
-use x86_64::instructions::tlb;
-use x86_64::structures::paging::page_table::PageTableEntry;
+use super::helpers::alloc_zeroed_frame;
 use super::page_type::{PageType, HUGE_PAGE_SIZE_1GIB, HUGE_PAGE_SIZE_2MIB};
-use super::vmm::{Vmm, alloc_zeroed_frame};
-use crate::mem::x86_64::pmm::{Pmm, FRAME_SIZE};
+use crate::kinfo;
+use crate::mem::pmm::{Pmm, FRAME_SIZE};
+use crate::mem::vmm::helpers::{invalid_remap_panic, invalid_unmap_panic, out_of_memory_panic};
+use crate::mem::vmm::traits::VmmPaging;
+use crate::mem::vmm::Vmm;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::{PhysAddr, VirtAddr};
 use crate::types::panic_codes::PanicCode;
+use x86_64::instructions::tlb;
+use x86_64::registers::control::Cr3;
+use x86_64::structures::paging::page_table::PageTableEntry;
+use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
 
-impl Vmm {
-    /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
-    /// valid, PMM-allocated frame.
-    ///
-    /// # Panics
-    /// Panics if the PMM runs out of frames when allocating an intermediate page table.
-    pub unsafe fn map_page(
+impl VmmPaging for Vmm {
+    type PageType = PageType;
+    type PageTableFlags = PageTableFlags;
+
+    fn setup_kernel_page() -> VirtAddr {
+        let hhdm_offset = &KSTATE.mm.hhdm_offset();
+        let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
+
+        let limine_pml4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
+
+        let kernel_pml4_ptr = (
+            pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
+        ) as *mut PageTable;
+
+        // Safe because the PMM gives us a valid piece of memory
+        unsafe {
+            core::ptr::write_bytes(kernel_pml4_ptr, 0x00, 1);
+        }
+
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                (limine_pml4_ptr as *const PageTableEntry).add(256),
+                (kernel_pml4_ptr as *mut PageTableEntry).add(256),
+                256
+            );
+        }
+
+        let phys_addr_u64 = kernel_pml4_ptr as u64 - hhdm_offset;
+        let phys_frame = PhysFrame::containing_address(x86_64::PhysAddr::new(phys_addr_u64));
+        let current_cr3_flags = Cr3::read().1;
+
+        // Using the same PML4 as provided by limine before, just copied so that the kernel
+        // is able to own it (limine's plm4 was safe and functional)
+        unsafe {
+            Cr3::write(phys_frame, current_cr3_flags);
+        }
+
+        kinfo!("Initialized kernel PML4 (Phys Addr: {phys_addr_u64:#x})");
+
+        VirtAddr::new(kernel_pml4_ptr as u64)
+    }
+
+    unsafe fn map_page(
         pmm: &mut Pmm,
         pml4_ptr: VirtAddr,
         virt: VirtAddr,
@@ -65,6 +103,7 @@ impl Vmm {
             current_pagetable = (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable;
         }
 
+        // Safe: current_pagetable is a valid
         let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[match page_type {
             PageType::Normal => virt.p1_index(),
             PageType::HugePage2MiB => virt.p2_index(),
@@ -81,15 +120,7 @@ impl Vmm {
         crate::kdebug!("[VMM] map new page at virt {virt:#x}, phys {phys:#x}, type {page_type}, flags {flags:?}");
     }
 
-    /// Unmap one 4 KiB virtual page and flush its TLB entry.
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` was previously mapped and that no live code or
-    /// data references the page after this call returns.
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn unmap_page(
+    unsafe fn unmap_page(
         pml4_ptr: VirtAddr,
         virt: VirtAddr
     ) {
@@ -117,6 +148,9 @@ impl Vmm {
             #[cfg(feature = "vmm-debug-logging")]
             crate::kdebug!("[VMM] unmap page at virt {virt:#x}");
         };
+
+        // UNSAFE JUSTIFICATION 4x for below
+        // The pointer which is being read (current) is a known and correct addr
 
         // PML4
         let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p4_index()] };
@@ -150,16 +184,7 @@ impl Vmm {
         debug_log(&virt);
     }
 
-    /// Change page table flags of an already mapped page
-    ///
-    /// # Safety
-    /// The caller must ensure `virt` was previously mapped and that changing the page's flags
-    /// will not violate anything (example: making a page non-writable while a mutable reference
-    /// is held to it)
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
-    pub unsafe fn remap_page(
+    unsafe fn remap_page(
         pml4_ptr: VirtAddr,
         virt: VirtAddr,
         new_flags: PageTableFlags
@@ -187,6 +212,9 @@ impl Vmm {
             #[cfg(feature = "vmm-debug-logging")]
             crate::kdebug!("[VMM] remap page at virt {virt:#x} to flags {flags:?}");
         };
+
+        // UNSAFE JUSTIFICATION 4x for below
+        // The pointer which is being read (current) is a known and correct addr
 
         // PML4
         let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[virt.p4_index()] };
@@ -226,9 +254,7 @@ impl Vmm {
         debug_log(&virt, &new_flags);
     }
 
-    /// Walk the page table and return the phys address mapped at `virt` or `None` if any
-    /// level is not present
-    pub fn translate(
+    fn translate(
         pml4_ptr: VirtAddr,
         virt: VirtAddr
     ) -> Option<PhysAddr> {
@@ -288,21 +314,5 @@ pub fn misaligned_address_panic(align: PageType) -> ! {
             PageType::HugePage2MiB => "Physical and/or virtual address is not aligned to 2 MiB",
             PageType::HugePage1GiB => "Physical and/or virtual address is not aligned to 1 GiB"
         }
-    );
-}
-
-/// Panic when `unmap_page` hits a page-table level that is not present.
-pub fn invalid_unmap_panic() -> ! {
-    kernel_panic(
-        PanicCode::InvalidPageOperation,
-        "Attempting to unmap a page without a PRESENT flag",
-    );
-}
-
-/// Panic when `remap_page` hits a page-table level that is not present.
-pub fn invalid_remap_panic() -> ! {
-    kernel_panic(
-        PanicCode::InvalidPageOperation,
-        "Attempting to remap a page without a PRESENT flag",
     );
 }

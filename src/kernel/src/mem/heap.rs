@@ -4,13 +4,14 @@
 //!
 //! Authors: MarioS271
 
-use x86_64::structures::paging::PageTableFlags;
-use linked_list_allocator::LockedHeap;
-use crate::mem::vmm::{Vmm, PageType};
+use crate::mem::vmm::{traits::VmmPaging, Vmm};
+use crate::mem::x86_64::vmm::page_type::PageType;
 use crate::panic::kernel_panic;
-use crate::types::panic_codes::PanicCode;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::VirtAddr;
+use crate::types::panic_codes::PanicCode;
+use linked_list_allocator::LockedHeap;
+use x86_64::structures::paging::PageTableFlags;
 
 // TODO: redo heap allocator properly
 

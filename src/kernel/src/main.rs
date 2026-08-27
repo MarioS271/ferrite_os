@@ -51,7 +51,7 @@ extern "C" fn kmain() -> ! {
     basic_fb_init();
     early_kstate_populate();
 
-    kinfo!("Hello, FerriteOS!");
+    kinfo!("Hello, Ferrite!");
     kdebug!("Debug logging is active!");
 
     arch::init();

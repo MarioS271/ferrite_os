@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//!
+//! Type for differentiating normal pages and different kinds of huge pages
 //!
 //! Authors: MarioS271
 

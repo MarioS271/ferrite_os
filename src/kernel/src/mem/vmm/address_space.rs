@@ -4,7 +4,7 @@
 //! Authors: MarioS271
 
 use alloc::collections::BTreeSet;
-use crate::mem::vma::Vma;
+use crate::mem::vmm::vma::Vma;
 use crate::types::addr::VirtAddr;
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs

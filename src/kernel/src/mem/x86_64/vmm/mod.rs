@@ -3,10 +3,6 @@
 //!
 //! Authors: MarioS271
 
-mod vmm;
-mod vma;
-mod paging;
-mod page_type;
-
-pub use vmm::*;
-pub use page_type::*;
+pub(crate) mod paging;
+pub(crate) mod page_type;
+pub(crate) mod helpers;
