@@ -9,3 +9,4 @@ mod paging;
 mod page_type;
 
 pub use vmm::*;
+pub use page_type::*;
