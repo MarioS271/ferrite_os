@@ -31,4 +31,8 @@ SECTIONS {
         *(.bss .bss.*)
         *(COMMON)
     } :data
+    
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    
+    __kernel_end = .;
 }

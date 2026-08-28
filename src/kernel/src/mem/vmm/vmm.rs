@@ -10,3 +10,9 @@ pub struct Vmm;
 pub enum VmmError {
     VmaOverlap
 }
+
+impl Vmm {
+    pub fn map() {
+        
+    }
+}

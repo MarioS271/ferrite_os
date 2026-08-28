@@ -3,8 +3,10 @@
 //!
 //! Authors: MarioS271
 
-use core::fmt::{Display, Debug, UpperHex, LowerHex, Pointer};
+use crate::types::addr::PhysAddr;
+use core::fmt::{Debug, Display, LowerHex, Pointer, UpperHex};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
+use crate::state::kstate::KSTATE;
 
 /// A type representing virtual addresses in the CPU's virtual address space
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -25,6 +27,11 @@ impl VirtAddr {
     /// Creates a new `VirtAddr` from a `*const T` or `*mut T` pointer
     pub fn from_ptr<T>(ptr: *const T) -> Self {
         Self(ptr as u64)
+    }
+
+    /// Creates a new `VirtAddr` from a physical address
+    pub fn from_phys(phys: PhysAddr) -> Self {
+        Self(phys.as_u64() + KSTATE.mm.hhdm_offset())
     }
 
     /// Returns the address as a `u64`

@@ -14,14 +14,16 @@ const NUM_ORDERS: usize = MAX_ORDER + 1;
 
 /// Buddy-Allocator based tracker of free and head physical frames.
 pub struct Pmm {
-    head: [Option<PhysAddr>; 11]
+    head: [Option<PhysAddr>; 11],
+    total_mem: u64
 }
 
 impl Pmm {
     /// Initialize the PMM from the Limine memory map, coalescing usable frames into the buddy free lists.
     pub fn init(entries: &[&memmap::Entry]) -> Self {
         let mut pmm = Pmm {
-            head: [None; NUM_ORDERS]
+            head: [None; NUM_ORDERS],
+            total_mem: 0
         };
 
         #[cfg(feature = "debug-logging")]
@@ -50,7 +52,10 @@ impl Pmm {
             kdebug!("[PMM] acpi: {} regions", count_acpi);
         }
 
+        let mut total_mem = 0u64;
         for &entry in entries {
+            total_mem = total_mem.max(entry.base + entry.length);
+
             if entry.type_ != memmap::MEMMAP_USABLE { continue; }
 
             let mut addr = entry.base;
@@ -79,7 +84,13 @@ impl Pmm {
 
         kinfo!("Initialized PMM");
 
+        pmm.total_mem = total_mem;
         pmm
+    }
+
+    /// Getter for the length of total memory, returns the highest physical address given by the memmap
+    pub fn get_total_mem(&self) -> u64 {
+        self.total_mem
     }
 
     /// Allocate a block of `FRAME_SIZE << order` bytes

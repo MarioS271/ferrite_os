@@ -25,7 +25,7 @@ impl VmmPaging for Vmm {
 
     fn setup_kernel_page() -> VirtAddr {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
+        let mut pmm = KSTATE.mm.pmm().lock();
 
         let limine_pml4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 

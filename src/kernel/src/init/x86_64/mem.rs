@@ -8,18 +8,17 @@ use crate::mem::vmm::address_space::AddressSpace;
 use crate::mem::vmm::traits::VmmPaging;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
-use crate::types::addr::PhysAddr;
-use crate::types::irq_mutex::IrqMutex;
+use crate::types::addr::{PhysAddr, VirtAddr};
 use crate::types::panic_codes::PanicCode;
 use crate::{kdebug, mem, LIMINE_MEMMAP_REQUEST};
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
 
 pub fn mm_init() {
-    let kernel_page;
+    let kernel_page: VirtAddr;
     
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
-        KSTATE.mm.pmm.call_once(|| IrqMutex::new(mem::pmm::Pmm::init(memmap_response.entries())));
+        KSTATE.mm.init_pmm(mem::pmm::Pmm::init(memmap_response.entries()));
         kernel_page = mem::vmm::Vmm::setup_kernel_page();
 
         reclaim_bootloader_memory(memmap_response);
@@ -31,11 +30,12 @@ pub fn mm_init() {
     }
 
     mem::heap::init(kernel_page);
-    KSTATE.mm.kernel_addr_space.call_once(|| AddressSpace::new(kernel_page));
+    KSTATE.mm.init_kernel_addr_space(AddressSpace::new(kernel_page));
+    KSTATE.mm.kernel_addr_space().lock().setup_kernel_vmas();
 }
 
 pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
-    let mut pmm = KSTATE.mm.pmm.get().unwrap().lock();
+    let mut pmm = KSTATE.mm.pmm().lock();
 
     #[cfg(feature = "debug-logging")]
     let (mut total_bytes, mut total_entries) = (0u64, 0u64);

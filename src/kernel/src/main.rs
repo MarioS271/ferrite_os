@@ -20,7 +20,7 @@ mod config;
 mod init;
 
 use spin::Once;
-use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
+use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest, Request};
 use crate::panic::kernel_panic;
 use crate::arch::instructions;
 use crate::state::kstate::KSTATE;
@@ -43,6 +43,11 @@ pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     basic_fb: Once::new(),
     basic_fb_psf2_font: Once::new(),
 };
+
+/// Symbol which shows the last address of the kernel
+unsafe extern "C" {
+    static __kernel_end: u8;
+}
 
 /// Kernel entry point
 #[unsafe(no_mangle)]
