@@ -21,10 +21,7 @@ static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 #[cold]
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
-
-    // Worst case, serial + basic fb output gets interrupted/cut off, which isn't a big deal
-    // considering the kernel has panicked
-    unsafe { crate::logging::kprint::force_unlock_kprint_state(); }
+    force_unlock_loggers();
 
     if KERNEL_PANIC_TRIGERRED.load(Ordering::Acquire) {
         loop {
@@ -67,10 +64,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     use core::fmt::Write;
 
     instructions::disable_interrupts();
-
-    // Worst case, serial + basic fb output gets interrupted/cut off, which isn't a big deal
-    // considering the kernel has panicked
-    unsafe { crate::logging::kprint::force_unlock_kprint_state(); }
+    force_unlock_loggers();
 
     if RUST_PANIC_TRIGERRED.load(Ordering::Acquire) {
         loop {
@@ -119,5 +113,18 @@ fn panic(panic_info: &PanicInfo) -> ! {
 
     loop {
         instructions::halt_cpu();
+    }
+}
+
+/// Force-unlocks the kernel serial logger and the basic framebuffer
+///
+/// # Safety
+/// Worst case, serial + basic fb output gets interrupted/cut off, which isn't a big deal
+/// considering the kernel has panicked
+fn force_unlock_loggers() {
+    // Safety: refer to above notice
+    unsafe {
+        SIMPLE_STATE.serial().force_unlock();
+        SIMPLE_STATE.basic_fb().force_unlock();
     }
 }
