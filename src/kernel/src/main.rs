@@ -30,8 +30,6 @@ static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new(
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
-
-
 unsafe extern "C" {
     /// Symbol which is located at the start of the kernel
     pub static __kernel_start: u8;
