@@ -5,8 +5,8 @@ The intention is to be able to run unmodified linux binaries, aswell as provide 
 such as intent-aware scheduling, real-time scheduling/scheduling hints ("don't preempt me for this long"), a namespaced VFS and more.
 
 The kernel lives under `src/kernel/src` as a cargo workspace member.
-Architecture-specific code is isolated under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/`;
-`mod.rs` selects the right submodule at compile time via `#[cfg(target_arch)]` and re-exports it.
+Architecture-specific code is isolated under `arch/<arch>/`, `logging/<arch>/`, `mem/<arch>/` and re-exported into
+the right submodule at compile time via `#[cfg(target_arch)]`.
 
 ---
 

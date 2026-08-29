@@ -11,4 +11,5 @@ pub(crate) mod address_space;
 pub(crate) mod vma;
 pub(crate) mod helpers;
 
+#[allow(unused_imports)]
 #[cfg(target_arch = "x86_64")] use super::x86_64::vmm::*;

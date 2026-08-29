@@ -78,8 +78,7 @@ extern "C" fn kmain() -> ! {
 
 /// Initializes COM1
 fn serial_init() {
-    use logging::serial::Serial;
-    use logging::_serial::{SerialPort, _Serial};
+    use crate::logging::serial::{Serial, SerialPort, _Serial};
 
     SIMPLE_STATE.serial.call_once(|| -> Serial {
         Serial::new(SerialPort::Serial1)

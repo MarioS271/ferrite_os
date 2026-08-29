@@ -3,6 +3,8 @@
 //!
 //! Authors: MarioS271
 
+pub use super::x86_64::serial::*;
+
 /// Interface for a serial port implementation.
 pub trait _Serial {
     /// Create a new (uninitialized) serial port instance for the given COM port.

@@ -5,7 +5,7 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 use x86_64::instructions::port::Port;
-use crate::logging::_serial::{SerialPort, _Serial};
+use crate::logging::serial::{SerialPort, _Serial};
 
 static COM1_BASE_ADDRESS: u16 = 0x03F8;
 static COM2_BASE_ADDRESS: u16 = 0x02F8;
