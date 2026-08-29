@@ -46,7 +46,8 @@ pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
 
 /// Symbol which shows the last address of the kernel
 unsafe extern "C" {
-    static __kernel_end: u8;
+    pub static __kernel_start: u8;
+    pub static __kernel_end: u8;
 }
 
 /// Kernel entry point

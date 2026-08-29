@@ -41,7 +41,11 @@ impl AddressSpace {
             }
         );
         let _ = self.insert_vma(
-            todo!("finish this; get kernel start/end addr from linker script")
+            Vma {
+                start_addr: VirtAddr::new(unsafe { &raw const crate::__kernel_start as u64 }),
+                end_addr: VirtAddr::new(unsafe { &raw const crate::__kernel_end as u64 }),
+                flags: VmaFlags::READ | VmaFlags::WRITE | VmaFlags::EXEC
+            }
         );
     }
 
