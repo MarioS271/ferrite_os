@@ -18,6 +18,7 @@ static KERNEL_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
 
 /// Halt the kernel with a diagnostic message; re-entrant calls skip straight to the halt loop.
+#[cold]
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
 
