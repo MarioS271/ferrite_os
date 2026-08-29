@@ -35,7 +35,7 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     }
     PANIC_TRIGGERED.fetch_or(PanicTriggered::WasKernelPanicTriggered as u8, Ordering::AcqRel);
 
-    {  // todo: add init check for serial
+    if SIMPLE_STATE.is_serial_initialized() {
         use crate::logging::serial::_Serial;
         let serial = SIMPLE_STATE.serial().lock();
 
@@ -45,7 +45,7 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
         serial.write(panic_message);
     }
 
-    {  // todo: add init check for basic fb and psf2 font
+    if SIMPLE_STATE.is_basic_fb_initialized() && SIMPLE_STATE.is_basic_fb_psf2_font_initialized() {
         let fb = SIMPLE_STATE.basic_fb().lock();
         let font = SIMPLE_STATE.basic_fb_psf2_font();
         let mut x: usize = 0;
@@ -94,7 +94,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
         let _ = write!(location_buf, "{}\n  on line {}", location.file(), location.line());
     }
 
-    {  // todo: add init check for serial
+    if SIMPLE_STATE.is_serial_initialized() {
         use crate::logging::serial::_Serial;
         let serial = SIMPLE_STATE.serial().lock();
 
@@ -104,7 +104,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
         serial.write(location_buf.as_str());
     }
 
-    {  // todo: add init check for basic fb and psf2 font
+    if SIMPLE_STATE.is_basic_fb_initialized() && SIMPLE_STATE.is_basic_fb_psf2_font_initialized() {
         let fb = SIMPLE_STATE.basic_fb().lock();
         let font = SIMPLE_STATE.basic_fb_psf2_font();
         let mut x: usize = 0;
