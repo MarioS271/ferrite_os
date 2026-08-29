@@ -9,13 +9,17 @@ use crate::types::fmt_buffer::FmtBuffer;
 use crate::types::panic_codes::PanicCode;
 use crate::SIMPLE_STATE;
 use core::panic::PanicInfo;
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicU8, Ordering};
 
-/// Prevents infinite panic re-entry on the `kernel_panic` path.
-static KERNEL_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
+/// Used to prevent infinite panic handler reentry
+static PANIC_TRIGGERED: AtomicU8 = AtomicU8::new(0);
 
-/// Prevents infinite panic re-entry on the `#[panic_handler]` path.
-static RUST_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
+/// Enum helper to not have to write the raw bitshifts on every PANIC_TRIGGERED interaction
+#[repr(u8)]
+enum PanicTriggered {
+    WasKernelPanicTriggered = 1 << 0,
+    WasRustPanicTriggered = 1 << 1
+}
 
 /// Halt the kernel with a diagnostic message; re-entrant calls skip straight to the halt loop.
 #[cold]
@@ -23,12 +27,13 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
     force_unlock_loggers();
 
-    if KERNEL_PANIC_TRIGERRED.load(Ordering::Acquire) {
+    if PANIC_TRIGGERED.load(Ordering::Acquire) & PanicTriggered::WasKernelPanicTriggered as u8 != 0 {
+        core::hint::cold_path();
         loop {
             instructions::halt_cpu();
         }
     }
-    KERNEL_PANIC_TRIGERRED.store(true, Ordering::Release);
+    PANIC_TRIGGERED.fetch_or(PanicTriggered::WasKernelPanicTriggered as u8, Ordering::AcqRel);
 
     {  // todo: add init check for serial
         use crate::logging::serial::_Serial;
@@ -66,12 +71,13 @@ fn panic(panic_info: &PanicInfo) -> ! {
     instructions::disable_interrupts();
     force_unlock_loggers();
 
-    if RUST_PANIC_TRIGERRED.load(Ordering::Acquire) {
+    if PANIC_TRIGGERED.load(Ordering::Acquire) | PanicTriggered::WasRustPanicTriggered as u8 != 0 {
+        core::hint::cold_path();
         loop {
             instructions::halt_cpu();
         }
     }
-    RUST_PANIC_TRIGERRED.store(true, Ordering::Release);
+    PANIC_TRIGGERED.fetch_or(PanicTriggered::WasRustPanicTriggered as u8, Ordering::AcqRel);
 
     let mut message_buf: FmtBuffer<512> = FmtBuffer::new();
     if panic_info.message().as_str().is_none() {
