@@ -38,6 +38,7 @@ pub enum PanicCode {
     DoubleFree = 0x0301,
     IllegalFree = 0x0302,
     OutOfMemory = 0x0303,
+    MisalignedAddress = 0x0304,
     // Memory: Paging
     InvalidPageOperation = 0x320,
 
@@ -82,6 +83,7 @@ impl PanicCode {
             DoubleFree => "DoubleFree",
             IllegalFree => "IllegalFree",
             OutOfMemory => "OutOfMemory",
+            MisalignedAddress => "MisalignedAddress",
             // Memory: Paging
             InvalidPageOperation => "InvalidPageOperation",
 
@@ -98,7 +100,8 @@ impl PanicCode {
             Unknown => "Unknown",
             ManuallyTriggeredPanic => "IntendedPanic",
 
-            DoubleFree | IllegalFree | UninitializedAccess => "ProgrammerError",
+            DoubleFree | IllegalFree | UninitializedAccess
+            | MisalignedAddress => "ProgrammerError",
 
             InitFailure | NoValidMemMapEntry | OutOfMemory
             | InvalidPageOperation => "RuntimeError",

@@ -4,10 +4,10 @@
 //! Authors: MarioS271
 
 use crate::mem::vmm::vma::{Vma, VmaFlags};
-use crate::mem::vmm::VmmError;
+use crate::mem::vmm::{VmmError, VmmResult};
+use crate::state::kstate::KSTATE;
 use crate::types::addr::{PhysAddr, VirtAddr};
 use alloc::collections::BTreeSet;
-use crate::state::kstate::KSTATE;
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs
 pub struct AddressSpace {
@@ -50,7 +50,7 @@ impl AddressSpace {
     }
 
     /// Add a VMA to the `AddressSpace`
-    pub fn insert_vma(&mut self, vma: Vma) -> Result<(), VmmError> {
+    pub fn insert_vma(&mut self, vma: Vma) -> VmmResult {
         for vma_other in &self.vmas {
             if vma_other.overlaps(&vma) {
                 return Err(VmmError::VmaOverlap);
@@ -62,8 +62,8 @@ impl AddressSpace {
 
     /// Remove a VMA from the `AddressSpace`
     /// Returns whether the element to remove existed and could be removed or not
-    pub fn remove_vma(&mut self, vma_start_addr: VirtAddr) -> bool {
-        self.vmas.remove(&vma_start_addr)
+    pub fn remove_vma(&mut self, vma_start_addr: VirtAddr) -> Option<Vma> {
+        self.vmas.take(&vma_start_addr)
     }
 
     /// Search for a VMA in the `AddressSpace` which applies VMA flags to the given `VirtAddr`

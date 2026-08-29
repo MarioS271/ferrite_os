@@ -4,6 +4,7 @@
 //! Authors: MarioS271
 
 use crate::mem::pmm::Pmm;
+use crate::mem::vmm::vma::VmaFlags;
 use crate::types::addr::{PhysAddr, VirtAddr};
 
 pub trait VmmPaging {
@@ -67,4 +68,14 @@ pub trait VmmPaging {
         page_ptr: VirtAddr,
         virt: VirtAddr
     ) -> Option<PhysAddr>;
+
+    /// Translate VMA flags to arch-specific page table flags
+    fn vma_flags_to_page_flags(
+        vma_flags: VmaFlags
+    ) -> Self::PageTableFlags;
+
+    /// Translates a page type (like HugePage(2MiB) on x86_64) to an u64 size
+    fn page_type_to_size(
+        page_type: Self::PageType
+    ) -> u64;
 }
