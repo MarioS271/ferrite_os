@@ -9,22 +9,22 @@
 
 extern crate alloc;
 
-mod types;
-mod panic;
 mod arch;
-mod logging;
-mod screen;
-mod mem;
-mod state;
-mod config;
 mod init;
+mod logging;
+mod mem;
+mod screen;
+mod state;
+mod types;
 
-use spin::Once;
-use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest, Request};
-use crate::panic::kernel_panic;
+mod panic;
+
 use crate::arch::instructions;
+use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
 use crate::types::panic_codes::PanicCode;
+use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
+use spin::Once;
 
 /// Data structure for keeping the serial logger and basic fb resources for early boot and panic
 struct SimpleKernelState {
