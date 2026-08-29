@@ -12,8 +12,8 @@ pub(crate) fn init() {
     use crate::state::kstate::KSTATE;
     let cpu = &KSTATE.cpu;
 
-    cpu.tss[0].init();
-    cpu.gdt[0].init(&cpu.tss[0]);
+    cpu.bsp_cpu_state.tss.init();
+    cpu.bsp_cpu_state.gdt.init(&cpu.bsp_cpu_state.tss);
     cpu.idt.init();
 
     interrupts::pic::init();

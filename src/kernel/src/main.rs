@@ -22,27 +22,14 @@ mod panic;
 use crate::arch::instructions;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
+use crate::state::simple_state::SIMPLE_STATE;
 use crate::types::panic_codes::PanicCode;
 use limine::request::{FramebufferRequest, HhdmRequest, MemmapRequest};
-use spin::Once;
-
-/// Data structure for keeping the serial logger and basic fb resources for early boot and panic
-struct SimpleKernelState {
-    serial: Once<logging::serial::Serial>,
-    basic_fb: Once<screen::basic::framebuffer::BasicFramebuffer>,
-    basic_fb_psf2_font: Once<screen::basic::font::Psf2Font>,
-}
 
 static LIMINE_FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 static LIMINE_HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
-/// Data structure for keeping the serial logger and basic fb resources for early boot and panic
-pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
-    serial: Once::new(),
-    basic_fb: Once::new(),
-    basic_fb_psf2_font: Once::new(),
-};
 
 
 unsafe extern "C" {
@@ -76,20 +63,13 @@ extern "C" fn kmain() -> ! {
     }
 }
 
-/// Initializes COM1
+/// Initializes the kernel serial logger
 fn serial_init() {
     use crate::logging::serial::{Serial, SerialPort, _Serial};
 
-    SIMPLE_STATE.serial.call_once(|| -> Serial {
+    SIMPLE_STATE.init_serial(
         Serial::new(SerialPort::Serial1)
-    });
-    let res = SIMPLE_STATE.serial.get().unwrap().init();
-    if !res.is_ok() {
-        kernel_panic(
-            PanicCode::InitFailure,
-            "Failed to initialize serial for kernel logging"
-        );
-    }
+    );
 }
 
 /// Initializes the Basic Framebuffer
@@ -100,8 +80,8 @@ fn basic_fb_init() {
     if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response()
         && let Some(fb) = fb_response.framebuffers().first()
     {
-        SIMPLE_STATE.basic_fb.call_once(|| BasicFramebuffer::new(fb));
-        SIMPLE_STATE.basic_fb_psf2_font.call_once(|| Psf2Font::init());
+        SIMPLE_STATE.init_basic_fb(BasicFramebuffer::new(fb));
+        SIMPLE_STATE.init_basic_fb_psf2_font(Psf2Font::init());
     } else {
         kernel_panic(
             PanicCode::InitFailure,

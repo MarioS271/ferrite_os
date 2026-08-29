@@ -4,12 +4,12 @@
 //!
 //! Authors: MarioS271
 
+use crate::arch::instructions;
+use crate::types::fmt_buffer::FmtBuffer;
+use crate::types::panic_codes::PanicCode;
+use crate::SIMPLE_STATE;
 use core::panic::PanicInfo;
 use core::sync::atomic::{AtomicBool, Ordering};
-use crate::types::panic_codes::PanicCode;
-use crate::arch::instructions;
-use crate::SIMPLE_STATE;
-use crate::types::fmt_buffer::FmtBuffer;
 
 /// Prevents infinite panic re-entry on the `kernel_panic` path.
 static KERNEL_PANIC_TRIGERRED: AtomicBool = AtomicBool::new(false);
@@ -30,9 +30,9 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     }
     KERNEL_PANIC_TRIGERRED.store(true, Ordering::Release);
 
-    if SIMPLE_STATE.serial.is_completed() {
-        use crate::logging::_serial::_Serial;
-        let serial = SIMPLE_STATE.serial.get().unwrap();
+    {  // todo: add init check for serial
+        use crate::logging::serial::_Serial;
+        let serial = SIMPLE_STATE.serial().lock();
 
         serial.write("Kernel Panic! :(\n");
         serial.write(panic_code.as_str());
@@ -40,17 +40,17 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
         serial.write(panic_message);
     }
 
-    if SIMPLE_STATE.basic_fb.is_completed() && SIMPLE_STATE.basic_fb_psf2_font.is_completed() {
-        let fb = SIMPLE_STATE.basic_fb.get().unwrap();
-        let font = SIMPLE_STATE.basic_fb_psf2_font.get().unwrap();
+    {  // todo: add init check for basic fb and psf2 font
+        let fb = SIMPLE_STATE.basic_fb().lock();
+        let font = SIMPLE_STATE.basic_fb_psf2_font();
         let mut x: usize = 0;
         let mut y: usize = 0;
 
         fb.clear();
-        font.draw_string(fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
-        font.draw_string(fb, panic_code.as_str(), &mut x, &mut y, None);
-        font.draw_string(fb, "\n", &mut x, &mut y, None);
-        font.draw_string(fb, panic_message, &mut x, &mut y, None);
+        font.draw_string(&*fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
+        font.draw_string(&*fb, panic_code.as_str(), &mut x, &mut y, None);
+        font.draw_string(&*fb, "\n", &mut x, &mut y, None);
+        font.draw_string(&*fb, panic_message, &mut x, &mut y, None);
     }
 
     loop {
@@ -88,9 +88,9 @@ fn panic(panic_info: &PanicInfo) -> ! {
         let _ = write!(location_buf, "{}\n  on line {}", location.file(), location.line());
     }
 
-    if SIMPLE_STATE.serial.is_completed() {
-        use crate::logging::_serial::_Serial;
-        let serial = SIMPLE_STATE.serial.get().unwrap();
+    {  // todo: add init check for serial
+        use crate::logging::serial::_Serial;
+        let serial = SIMPLE_STATE.serial().lock();
 
         serial.write("\nKernel Panic! :(\n");
         serial.write("[!] This panic was triggered by Rust (runtime error or panic!() called)\n\n");
@@ -98,17 +98,17 @@ fn panic(panic_info: &PanicInfo) -> ! {
         serial.write(location_buf.as_str());
     }
 
-    if SIMPLE_STATE.basic_fb.is_completed() && SIMPLE_STATE.basic_fb_psf2_font.is_completed() {
-        let fb = SIMPLE_STATE.basic_fb.get().unwrap();
-        let font = SIMPLE_STATE.basic_fb_psf2_font.get().unwrap();
+    {  // todo: add init check for basic fb and psf2 font
+        let fb = SIMPLE_STATE.basic_fb().lock();
+        let font = SIMPLE_STATE.basic_fb_psf2_font();
         let mut x: usize = 0;
         let mut y: usize = 0;
 
         fb.clear();
-        font.draw_string(fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
-        font.draw_string(fb, "[!] This panic was triggered by Rust (runtime error or panic!() called)\n\n", &mut x, &mut y, None);
-        font.draw_string(fb, message_buf.as_str(), &mut x, &mut y, None);
-        font.draw_string(fb, location_buf.as_str(), &mut x, &mut y, None);
+        font.draw_string(&*fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
+        font.draw_string(&*fb, "[!] This panic was triggered by Rust (runtime error or panic!() called)\n\n", &mut x, &mut y, None);
+        font.draw_string(&*fb, message_buf.as_str(), &mut x, &mut y, None);
+        font.draw_string(&*fb, location_buf.as_str(), &mut x, &mut y, None);
     }
 
     loop {

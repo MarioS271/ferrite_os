@@ -46,20 +46,17 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
 
     write_log_buf(state, string);
 
-    if SIMPLE_STATE.serial.is_completed() {
-        use crate::logging::_serial::_Serial;
-        SIMPLE_STATE.serial.get().unwrap().write(string);
+    {  // todo: add init check for serial
+        use crate::logging::serial::_Serial;
+        SIMPLE_STATE.serial().lock().write(string);
     }
 
-    let basic_fb = &SIMPLE_STATE.basic_fb;
-    let basic_fb_psf2_font = &SIMPLE_STATE.basic_fb_psf2_font;
-
-    if basic_fb.is_completed() && basic_fb_psf2_font.is_completed() {
-        let fb = basic_fb.get().unwrap();
-        let font = basic_fb_psf2_font.get().unwrap();
+    {  // todo: add init check for basic fb and psf2 font
+        let fb = SIMPLE_STATE.basic_fb().lock();
+        let font = SIMPLE_STATE.basic_fb_psf2_font();
 
         let s = &mut **state;
-        font.draw_string(fb, string, &mut s.cursor_x, &mut s.cursor_y, color);
+        font.draw_string(&*fb, string, &mut s.cursor_x, &mut s.cursor_y, color);
 
         let last_row = fb.height as usize - font.glyph_height();
         if s.cursor_y > last_row {
