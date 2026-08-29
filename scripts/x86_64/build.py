@@ -370,6 +370,15 @@ def run_qemu():
             except subprocess.TimeoutExpired:
                 qemu.kill()
 
+def clean():
+    banner("Cleaning")
+    ensure_container_running()
+    run_in_container("rm -rf /ferrite_os/target/* /ferrite_os/build/*")
+    if CACHE.exists():
+        CACHE.unlink()
+        print(f"  ✓ Cache gelöscht")
+    print("  ✓ Clean done")
+
 # ─── terminal helpers ──────────────────────────────────────────────────────────
 
 def _save_terminal() -> tuple:
