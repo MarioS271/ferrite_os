@@ -89,4 +89,28 @@ impl PanicCode {
             InvalidPsf2MagicNumber => "InvalidPsf2MagicNumber",
         }
     }
+
+    /// Returns a string which tell you what general type of panic this was
+    /// (programmer error, runtime error, ...)
+    pub fn get_error_type_str(&self) -> &'static str {
+        use PanicCode::*;
+        match self {
+            Unknown => "Unknown",
+            ManuallyTriggeredPanic => "IntendedPanic",
+
+            DoubleFree | IllegalFree | UninitializedAccess => "ProgrammerError",
+
+            InitFailure | NoValidMemMapEntry | OutOfMemory
+            | InvalidPageOperation => "RuntimeError",
+
+            IllegalInterrupt | DivideError | NmiHardwareFailiure | Overflow
+            | InvalidOpcode | DeviceNotAvail | DoubleFault | InvalidTss
+            | SegmentNotPresent | StackSegmentFault | GeneralProtectionFault
+            | PageFault | X87FloatingPoint | AlignmentCheck | MachineCheck
+            | SimdFloatingPoint | Virtualization | VmmCommunicationException
+            | SecurityException => "CpuException",
+
+            InvalidPsf2MagicNumber => "RuntimeError / ProgrammerError"
+        }
+    }
 }

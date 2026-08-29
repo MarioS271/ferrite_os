@@ -39,9 +39,11 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
         use crate::logging::serial::_Serial;
         let serial = SIMPLE_STATE.serial().lock();
 
-        serial.write("Kernel Panic! :(\n");
+        serial.write("\nKernel Panic! :(\n");
         serial.write(panic_code.as_str());
-        serial.write("\n");
+        serial.write(" (Type: ");
+        serial.write(panic_code.get_error_type_str());
+        serial.write(")\n");
         serial.write(panic_message);
     }
 
@@ -54,7 +56,9 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
         fb.clear();
         font.draw_string(&*fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
         font.draw_string(&*fb, panic_code.as_str(), &mut x, &mut y, None);
-        font.draw_string(&*fb, "\n", &mut x, &mut y, None);
+        font.draw_string(&*fb, " (Type: ", &mut x, &mut y, None);
+        font.draw_string(&*fb, panic_code.get_error_type_str(), &mut x, &mut y, None);
+        font.draw_string(&*fb, ")\n", &mut x, &mut y, None);
         font.draw_string(&*fb, panic_message, &mut x, &mut y, None);
     }
 
