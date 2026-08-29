@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Panic codes for classifying kernel panics.
+//! Panic codes for classifying kernel panics
 //!
 //! Authors: MarioS271
 
-/// Numeric (`u16`) classification of the reason for a kernel panic.
+/// Enum which represents different possible kernel panic scenarios
 #[repr(u16)]
 pub enum PanicCode {
     // General
     Unknown = 0x0000,
     ManuallyTriggeredPanic = 0x0001,
     InitFailure = 0x0002,
+    UninitializedAccess = 0x0003,
 
     // Exceptions
     IllegalInterrupt = 0x0099,
@@ -47,43 +48,45 @@ pub enum PanicCode {
 impl PanicCode {
     /// Return the variant name as a static string, suitable for printing in a panic message.
     pub fn as_str(&self) -> &'static str {
+        use PanicCode::*;
         match self {
             // General
-            PanicCode::Unknown => "Unknown",
-            PanicCode::ManuallyTriggeredPanic => "ManuallyTriggeredPanic",
-            PanicCode::InitFailure => "InitFailure",
+            Unknown => "Unknown",
+            ManuallyTriggeredPanic => "ManuallyTriggeredPanic",
+            InitFailure => "InitFailure",
+            UninitializedAccess => "UninitializedAccess",
 
             // Exceptions
-            PanicCode::IllegalInterrupt => "IllegalInterrupt",
-            PanicCode::DivideError => "DivideError",
-            PanicCode::NmiHardwareFailiure => "NmiHardwareFailiure",
-            PanicCode::Overflow => "Overflow",
-            PanicCode::InvalidOpcode => "InvalidOpcode",
-            PanicCode::DeviceNotAvail => "DeviceNotAvail",
-            PanicCode::DoubleFault => "DoubleFault",
-            PanicCode::InvalidTss => "InvalidTss",
-            PanicCode::SegmentNotPresent => "SegmentNotPresent",
-            PanicCode::StackSegmentFault => "StackSegmentFault",
-            PanicCode::GeneralProtectionFault => "GeneralProtectionFault",
-            PanicCode::PageFault => "PageFault",
-            PanicCode::X87FloatingPoint => "X87FloatingPoint",
-            PanicCode::AlignmentCheck => "AlignmentCheck",
-            PanicCode::MachineCheck => "MachineCheck",
-            PanicCode::SimdFloatingPoint => "SimdFloatingPoint",
-            PanicCode::Virtualization => "Virtualization",
-            PanicCode::VmmCommunicationException => "VmmCommunicationException",
-            PanicCode::SecurityException => "SecurityException",
+            IllegalInterrupt => "IllegalInterrupt",
+            DivideError => "DivideError",
+            NmiHardwareFailiure => "NmiHardwareFailiure",
+            Overflow => "Overflow",
+            InvalidOpcode => "InvalidOpcode",
+            DeviceNotAvail => "DeviceNotAvail",
+            DoubleFault => "DoubleFault",
+            InvalidTss => "InvalidTss",
+            SegmentNotPresent => "SegmentNotPresent",
+            StackSegmentFault => "StackSegmentFault",
+            GeneralProtectionFault => "GeneralProtectionFault",
+            PageFault => "PageFault",
+            X87FloatingPoint => "X87FloatingPoint",
+            AlignmentCheck => "AlignmentCheck",
+            MachineCheck => "MachineCheck",
+            SimdFloatingPoint => "SimdFloatingPoint",
+            Virtualization => "Virtualization",
+            VmmCommunicationException => "VmmCommunicationException",
+            SecurityException => "SecurityException",
 
             // Memory
-            PanicCode::NoValidMemMapEntry => "NoValidMemMapEntry",
-            PanicCode::DoubleFree => "DoubleFree",
-            PanicCode::IllegalFree => "IllegalFree",
-            PanicCode::OutOfMemory => "OutOfMemory",
+            NoValidMemMapEntry => "NoValidMemMapEntry",
+            DoubleFree => "DoubleFree",
+            IllegalFree => "IllegalFree",
+            OutOfMemory => "OutOfMemory",
             // Memory: Paging
-            PanicCode::InvalidPageOperation => "InvalidPageOperation",
+            InvalidPageOperation => "InvalidPageOperation",
 
             // Display
-            PanicCode::InvalidPsf2MagicNumber => "InvalidPsf2MagicNumber",
+            InvalidPsf2MagicNumber => "InvalidPsf2MagicNumber",
         }
     }
 }
