@@ -44,9 +44,11 @@ pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     basic_fb_psf2_font: Once::new(),
 };
 
-/// Symbol which shows the last address of the kernel
+
 unsafe extern "C" {
+    /// Symbol which is located at the start of the kernel
     pub static __kernel_start: u8;
+    /// Symbol which is located at the end of the kernel
     pub static __kernel_end: u8;
 }
 
