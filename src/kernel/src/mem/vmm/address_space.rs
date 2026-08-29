@@ -42,8 +42,8 @@ impl AddressSpace {
         );
         let _ = self.insert_vma(
             Vma {
-                start_addr: VirtAddr::new(unsafe { &raw const crate::__kernel_start as u64 }),
-                end_addr: VirtAddr::new(unsafe { &raw const crate::__kernel_end as u64 }),
+                start_addr: VirtAddr::new(&raw const crate::__kernel_start as u64),
+                end_addr: VirtAddr::new(&raw const crate::__kernel_end as u64),
                 flags: VmaFlags::READ | VmaFlags::WRITE | VmaFlags::EXEC
             }
         );
