@@ -19,13 +19,14 @@ use x86_64::instructions::tlb;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::page_table::PageTableEntry;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
-use crate::mem::vmm::vma::VmaFlags;
 
 impl VmmPaging for Vmm {
     type PageType = PageType;
     type PageTableFlags = PageTableFlags;
 
     fn setup_kernel_page() -> VirtAddr {
+        // TODO: do own paging
+
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut pmm = KSTATE.mm.pmm().lock();
 

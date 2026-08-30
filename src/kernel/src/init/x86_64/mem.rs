@@ -13,13 +13,14 @@ use crate::types::panic_codes::PanicCode;
 use crate::{kdebug, mem, LIMINE_MEMMAP_REQUEST};
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
+use crate::mem::vmm::Vmm;
 
 pub fn mm_init() {
     let kernel_page: VirtAddr;
     
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
         KSTATE.mm.init_pmm(mem::pmm::Pmm::init(memmap_response.entries()));
-        kernel_page = mem::vmm::Vmm::setup_kernel_page();
+        kernel_page = Vmm::setup_kernel_page();
 
         reclaim_bootloader_memory(memmap_response);
     } else {
@@ -30,11 +31,13 @@ pub fn mm_init() {
     }
 
     mem::heap::init(kernel_page);
+
     KSTATE.mm.init_kernel_addr_space(AddressSpace::new(kernel_page));
     KSTATE.mm.kernel_addr_space().lock().setup_kernel_vmas();
+    remap_kernel_pages();
 }
 
-pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
+fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     let mut pmm = KSTATE.mm.pmm().lock();
 
     #[cfg(feature = "debug-logging")]
@@ -92,4 +95,30 @@ pub fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     }
 
     kdebug!("reclaimed {} bootloader memory entries ({} MiB)", total_entries, total_bytes / 1024 / 1024);
+}
+
+fn remap_kernel_pages() {
+    let addr_space = KSTATE.mm.kernel_addr_space().lock();
+    let kernel_start = &raw const crate::__kernel_start as u64;
+
+    for vma in addr_space.vmas() {
+        if vma.start_addr.as_u64() < kernel_start {
+            continue;
+        }
+
+        let mut addr = vma.start_addr;
+        let flags = Vmm::vma_flags_to_page_flags(vma.flags);
+
+        while addr < vma.end_addr {
+            unsafe {
+                Vmm::remap_page(
+                    addr_space.page_ptr(),
+                    addr,
+                    flags
+                );
+            }
+
+            addr += FRAME_SIZE;
+        }
+    }
 }

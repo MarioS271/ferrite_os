@@ -38,3 +38,6 @@ SECTIONS {
     
     __kernel_end = .;
 }
+
+__kernel_text_end = ADDR(.rodata);
+__kernel_rodata_end = ADDR(.data);

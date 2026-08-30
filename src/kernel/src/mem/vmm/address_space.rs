@@ -37,7 +37,7 @@ impl AddressSpace {
     /// Initializes Kernel VMAs on self
     /// Do not call this ever, unless you are initializing the kernel's address space
     pub fn setup_kernel_vmas(&mut self) {
-        // TODO: add vma for heap
+        // HHDM
         let _ = self.insert_vma(
             Vma {
                 start_addr: VirtAddr::new(KSTATE.mm.hhdm_offset()),
@@ -45,11 +45,28 @@ impl AddressSpace {
                 flags: VmaFlags::READ | VmaFlags::WRITE
             }
         );
+        // Kernel .text
         let _ = self.insert_vma(
             Vma {
                 start_addr: VirtAddr::new(&raw const crate::__kernel_start as u64),
+                end_addr: VirtAddr::new(&raw const crate::__kernel_text_end as u64),
+                flags: VmaFlags::READ | VmaFlags::EXEC
+            }
+        );
+        // Kernel .rodata
+        let _ = self.insert_vma(
+            Vma {
+                start_addr: VirtAddr::new(&raw const crate::__kernel_text_end as u64),
+                end_addr: VirtAddr::new(&raw const crate::__kernel_rodata_end as u64),
+                flags: VmaFlags::READ
+            }
+        );
+        // Kernel .data and .bss
+        let _ = self.insert_vma(
+            Vma {
+                start_addr: VirtAddr::new(&raw const crate::__kernel_rodata_end as u64),
                 end_addr: VirtAddr::new(&raw const crate::__kernel_end as u64),
-                flags: VmaFlags::READ | VmaFlags::WRITE | VmaFlags::EXEC
+                flags: VmaFlags::READ | VmaFlags::WRITE
             }
         );
     }

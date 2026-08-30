@@ -3,10 +3,10 @@
 //!
 //! Authors: MarioS271
 
-use crate::{kdebug, kinfo};
-use limine::memmap;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::PhysAddr;
+use crate::kinfo;
+use limine::memmap;
 
 pub const FRAME_SIZE: u64 = 4096;
 const MAX_ORDER: usize = 10;

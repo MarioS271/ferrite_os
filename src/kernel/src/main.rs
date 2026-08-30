@@ -35,6 +35,11 @@ unsafe extern "C" {
     pub static __kernel_start: u8;
     /// Symbol which is located at the end of the kernel
     pub static __kernel_end: u8;
+
+    /// Symbol which is located one byte after the end of the `.text` section
+    pub static __kernel_text_end: u8;
+    /// Symbol which is located one byte after the end of the `.rodata` section
+    pub static __kernel_rodata_end: u8;
 }
 
 /// Kernel entry point
