@@ -40,7 +40,8 @@ impl Vma {
 }
 
 impl Borrow<VirtAddr> for Vma {
-    /// Returns a reference to [`Vma::start_addr`] to make it possible for `BTreeSet` to compare it with a `VirtAddr` directly
+    /// Returns a reference to [`Vma::start_addr`] to make it possible for [`BTreeSet`] to
+    /// compare it with a [`VirtAddr`] directly
     fn borrow(&self) -> &VirtAddr {
         &self.start_addr
     }

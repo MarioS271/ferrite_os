@@ -31,7 +31,7 @@ pub static KSTATE: KState = KState {
     time: Time {},
     cpu: Cpu::new(),
     fs: Fs {},
-    procs: Procs {},
+    procs: Procs::new(),
 };
 
 /// The central kernel state aggregate; one field per OS subsystem domain.

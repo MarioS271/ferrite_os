@@ -89,11 +89,60 @@ impl Vmm {
         let mut offset = 0;
         while offset < size {
             if let Some(phys) = Self::translate(address_space.page_ptr, virt + offset) {
-                Self::unmap_page(address_space.page_ptr, virt + offset);
+                unsafe { Self::unmap_page(address_space.page_ptr, virt + offset); }
                 pmm.free_frame(phys);
             }
 
             offset += FRAME_SIZE;
+        }
+
+        Ok(())
+    }
+
+    /// Remap a virtual memory region by changing its VMA's flags from the given [`AddressSpace`] and
+    /// remapping all currently mapped pages to new matching page flags.
+    ///
+    /// # Safety
+    /// The caller must ensure that for example when removing the `WRITE` flag,
+    /// no mutable references to the to be modified memory is held.
+    ///
+    /// # Panics
+    /// Panics in debug builds if `virt` is not aligned to [`FRAME_SIZE`]
+    ///
+    /// # Returns
+    /// Returns [`VmmError::VmaNotFound`] if no VMA starting at `virt` exists
+    pub unsafe fn remap_region(
+        address_space: &mut AddressSpace,
+        virt: VirtAddr,
+        new_vma_flags: VmaFlags
+    ) -> VmmResult
+    where
+        Self: VmmPaging
+    {
+        #[cfg(debug_assertions)]
+        if !virt.is_aligned(FRAME_SIZE) {
+            kernel_panic(
+                PanicCode::MisalignedAddress,
+                "Vmm::remap_region recieved an improperly aligned virtual address or size"
+            );
+        }
+
+        let mut vma = address_space.remove_vma(virt).ok_or(VmmError::VmaNotFound)?;
+        let size = vma.end_addr.as_u64() - vma.start_addr.as_u64();
+
+        vma.flags = new_vma_flags;
+        address_space.vmas.insert(vma);
+
+        let new_page_flags = Self::vma_flags_to_page_flags(new_vma_flags);
+
+        let mut offset = 0;
+        while offset < size {
+            if let Some((_, page_size)) = Self::translate_with_size(address_space.page_ptr, virt + offset) {
+                unsafe { Self::remap_page(address_space.page_ptr, virt + offset, new_page_flags); }
+                offset += page_size;
+            } else {
+                offset += FRAME_SIZE;
+            }
         }
 
         Ok(())

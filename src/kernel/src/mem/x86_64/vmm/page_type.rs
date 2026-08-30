@@ -16,6 +16,7 @@ pub enum PageType {
     HugePage2MiB = HUGE_PAGE_SIZE_2MIB,
     HugePage1GiB = HUGE_PAGE_SIZE_1GIB
 }
+
 impl Display for PageType {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", match self {

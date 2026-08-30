@@ -9,6 +9,7 @@ use crate::kinfo;
 use crate::mem::pmm::{Pmm, FRAME_SIZE};
 use crate::mem::vmm::helpers::{invalid_remap_panic, invalid_unmap_panic, out_of_memory_panic};
 use crate::mem::vmm::traits::VmmPaging;
+use crate::mem::vmm::vma::VmaFlags;
 use crate::mem::vmm::Vmm;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
@@ -18,6 +19,7 @@ use x86_64::instructions::tlb;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::page_table::PageTableEntry;
 use x86_64::structures::paging::{PageTable, PageTableFlags, PageTableIndex, PhysFrame};
+use crate::mem::vmm::vma::VmaFlags;
 
 impl VmmPaging for Vmm {
     type PageType = PageType;
@@ -27,26 +29,26 @@ impl VmmPaging for Vmm {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
         let mut pmm = KSTATE.mm.pmm().lock();
 
-        let limine_pml4_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
+        let limine_page_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
 
-        let kernel_pml4_ptr = (
+        let kernel_page_ptr = (
             pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
         ) as *mut PageTable;
 
         // Safe because the PMM gives us a valid piece of memory
         unsafe {
-            core::ptr::write_bytes(kernel_pml4_ptr, 0x00, 1);
+            core::ptr::write_bytes(kernel_page_ptr, 0x00, 1);
         }
 
         unsafe {
             core::ptr::copy_nonoverlapping(
-                (limine_pml4_ptr as *const PageTableEntry).add(256),
-                (kernel_pml4_ptr as *mut PageTableEntry).add(256),
+                (limine_page_ptr as *const PageTableEntry).add(256),
+                (kernel_page_ptr as *mut PageTableEntry).add(256),
                 256
             );
         }
 
-        let phys_addr_u64 = kernel_pml4_ptr as u64 - hhdm_offset;
+        let phys_addr_u64 = kernel_page_ptr as u64 - hhdm_offset;
         let phys_frame = PhysFrame::containing_address(x86_64::PhysAddr::new(phys_addr_u64));
         let current_cr3_flags = Cr3::read().1;
 
@@ -58,12 +60,12 @@ impl VmmPaging for Vmm {
 
         kinfo!("Initialized kernel PML4 (Phys Addr: {phys_addr_u64:#x})");
 
-        VirtAddr::new(kernel_pml4_ptr as u64)
+        VirtAddr::new(kernel_page_ptr as u64)
     }
 
     unsafe fn map_page(
         pmm: &mut Pmm,
-        pml4_ptr: VirtAddr,
+        page_ptr: VirtAddr,
         virt: VirtAddr,
         phys: PhysAddr,
         page_type: PageType,
@@ -82,7 +84,7 @@ impl VmmPaging for Vmm {
             PageType::HugePage1GiB => 4
         };
 
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = page_ptr.as_mut_ptr::<PageTable>();
         let intermediate_flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | (flags & PageTableFlags::USER_ACCESSIBLE);
 
         for level in (lowest_iter_page..=4).rev() {
@@ -121,7 +123,7 @@ impl VmmPaging for Vmm {
     }
 
     unsafe fn unmap_page(
-        pml4_ptr: VirtAddr,
+        page_ptr: VirtAddr,
         virt: VirtAddr
     ) {
         if virt.as_u64() % FRAME_SIZE != 0 {
@@ -129,7 +131,7 @@ impl VmmPaging for Vmm {
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = page_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -185,7 +187,7 @@ impl VmmPaging for Vmm {
     }
 
     unsafe fn remap_page(
-        pml4_ptr: VirtAddr,
+        page_ptr: VirtAddr,
         virt: VirtAddr,
         new_flags: PageTableFlags
     ) {
@@ -194,7 +196,7 @@ impl VmmPaging for Vmm {
         }
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current_pagetable: *mut PageTable = pml4_ptr.as_mut_ptr::<PageTable>();
+        let mut current_pagetable: *mut PageTable = page_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -255,11 +257,19 @@ impl VmmPaging for Vmm {
     }
 
     fn translate(
-        pml4_ptr: VirtAddr,
+        page_ptr: VirtAddr,
         virt: VirtAddr
     ) -> Option<PhysAddr> {
+        let res = Self::translate_with_size(page_ptr, virt)?;
+        Some(res.0)
+    }
+
+    fn translate_with_size(
+        page_ptr: VirtAddr,
+        virt: VirtAddr
+    ) -> Option<(PhysAddr, u64)> {
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut current = pml4_ptr.as_mut_ptr::<PageTable>();
+        let mut current = page_ptr.as_mut_ptr::<PageTable>();
 
         let is_huge_page = |entry: &PageTableEntry| -> bool {
             entry.flags().contains(PageTableFlags::HUGE_PAGE)
@@ -286,7 +296,9 @@ impl VmmPaging for Vmm {
         let entry = &unsafe { core::ptr::read(current) }[virt.p3_index()];
         if !is_present(entry) { return None; }
         if is_huge_page(entry) {
-            return Some(PhysAddr::new(entry.addr().as_u64() + calc_offset(HUGE_PAGE_SIZE_1GIB - 1)));
+            return Some(
+                (PhysAddr::new(entry.addr().as_u64() + calc_offset(HUGE_PAGE_SIZE_1GIB - 1)), HUGE_PAGE_SIZE_1GIB)
+            );
         }
         current = advance_current_pagetable(entry);
 
@@ -294,14 +306,38 @@ impl VmmPaging for Vmm {
         let entry = &unsafe { core::ptr::read(current) }[virt.p2_index()];
         if !is_present(entry) { return None; }
         if is_huge_page(entry) {
-            return Some(PhysAddr::new(entry.addr().as_u64() + calc_offset(HUGE_PAGE_SIZE_2MIB - 1)));
+            return Some(
+                (PhysAddr::new(entry.addr().as_u64() + calc_offset(HUGE_PAGE_SIZE_2MIB - 1)), HUGE_PAGE_SIZE_2MIB)
+            );
         }
         current = advance_current_pagetable(entry);
 
         // PT
         let entry = &unsafe { core::ptr::read(current) }[virt.p1_index()];
         if !is_present(entry) { return None; }
-        Some(PhysAddr::new(entry.addr().as_u64() + calc_offset(FRAME_SIZE - 1)))
+        Some(
+            (PhysAddr::new(entry.addr().as_u64() + calc_offset(FRAME_SIZE - 1)), FRAME_SIZE)
+        )
+    }
+
+    fn vma_flags_to_page_flags(
+        vma_flags: VmaFlags
+    ) -> Self::PageTableFlags {
+        let mut flags = PageTableFlags::PRESENT;
+
+        if vma_flags.contains(VmaFlags::WRITE) {
+            flags |= PageTableFlags::WRITABLE;
+        }
+        if !vma_flags.contains(VmaFlags::EXEC) {
+            flags |= PageTableFlags::NO_EXECUTE;
+        }
+        if vma_flags.contains(VmaFlags::USER) {
+            flags |= PageTableFlags::USER_ACCESSIBLE;
+        } else {
+            flags |= PageTableFlags::GLOBAL;
+        }
+
+        flags
     }
 }
 

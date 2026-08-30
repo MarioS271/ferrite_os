@@ -62,20 +62,22 @@ pub trait VmmPaging {
         new_flags: Self::PageTableFlags
     );
 
-    /// Walk the page table and return the phys address mapped at `virt` or `None` if any
-    /// level is not present
+    /// Walk the page tables and return the phys address mapped at `virt` or `None` if the
+    /// address is not mapped
     fn translate(
         page_ptr: VirtAddr,
         virt: VirtAddr
     ) -> Option<PhysAddr>;
 
+    /// Walk the page tables and return a tuple of the phys address mapped at `virt` and the size of
+    /// the page `virt` is mapped in, or `None` if the address is not mapped
+    fn translate_with_size(
+        page_ptr: VirtAddr,
+        virt: VirtAddr
+    ) -> Option<(PhysAddr, u64)>;
+
     /// Translate VMA flags to arch-specific page table flags
     fn vma_flags_to_page_flags(
         vma_flags: VmaFlags
     ) -> Self::PageTableFlags;
-
-    /// Translates a page type (like HugePage(2MiB) on x86_64) to an u64 size
-    fn page_type_to_size(
-        page_type: Self::PageType
-    ) -> u64;
 }
