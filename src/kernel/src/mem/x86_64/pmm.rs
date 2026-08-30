@@ -3,9 +3,12 @@
 //!
 //! Authors: MarioS271
 
+#[cfg(feature = "debug-logging")]
+use crate::kdebug;
+
+use crate::kinfo;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::PhysAddr;
-use crate::kinfo;
 use limine::memmap;
 
 pub const FRAME_SIZE: u64 = 4096;
