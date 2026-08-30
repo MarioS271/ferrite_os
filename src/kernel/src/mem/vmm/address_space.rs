@@ -11,8 +11,8 @@ use alloc::collections::BTreeSet;
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs
 pub struct AddressSpace {
-    pub page_ptr: VirtAddr,
-    pub vmas: BTreeSet<Vma>,
+    page_ptr: VirtAddr,
+    vmas: BTreeSet<Vma>,
 }
 
 impl AddressSpace {
@@ -24,9 +24,14 @@ impl AddressSpace {
         }
     }
 
-    /// Getter for [`AddressSpace::page_ptr`]
-    pub fn get_page_ptr(&self) -> VirtAddr {
+    /// Getter for `AddressSpace::page_ptr`
+    pub fn page_ptr(&self) -> VirtAddr {
         self.page_ptr
+    }
+
+    /// Getter for `AddressSpace::vmas`
+    pub fn vmas(&self) -> &BTreeSet<Vma> {
+        &self.vmas
     }
 
     /// Initializes Kernel VMAs on self

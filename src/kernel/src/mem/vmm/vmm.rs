@@ -88,8 +88,8 @@ impl Vmm {
 
         let mut offset = 0;
         while offset < size {
-            if let Some(phys) = Self::translate(address_space.page_ptr, virt + offset) {
-                unsafe { Self::unmap_page(address_space.page_ptr, virt + offset); }
+            if let Some(phys) = Self::translate(address_space.page_ptr(), virt + offset) {
+                unsafe { Self::unmap_page(address_space.page_ptr(), virt + offset); }
                 pmm.free_frame(phys);
             }
 
@@ -131,14 +131,14 @@ impl Vmm {
         let size = vma.end_addr.as_u64() - vma.start_addr.as_u64();
 
         vma.flags = new_vma_flags;
-        address_space.vmas.insert(vma);
+        address_space.insert_vma(vma)?;
 
         let new_page_flags = Self::vma_flags_to_page_flags(new_vma_flags);
 
         let mut offset = 0;
         while offset < size {
-            if let Some((_, page_size)) = Self::translate_with_size(address_space.page_ptr, virt + offset) {
-                unsafe { Self::remap_page(address_space.page_ptr, virt + offset, new_page_flags); }
+            if let Some((_, page_size)) = Self::translate_with_size(address_space.page_ptr(), virt + offset) {
+                unsafe { Self::remap_page(address_space.page_ptr(), virt + offset, new_page_flags); }
                 offset += page_size;
             } else {
                 offset += FRAME_SIZE;

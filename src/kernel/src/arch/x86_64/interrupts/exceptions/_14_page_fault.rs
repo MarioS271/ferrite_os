@@ -46,7 +46,7 @@ fn handle_kernel_pf(
     );
 
     let flags = vma.flags;
-    let page_ptr = addr_space.page_ptr;
+    let page_ptr = addr_space.page_ptr();
     drop(addr_space);
 
     let mut pmm = KSTATE.mm.pmm().lock();
