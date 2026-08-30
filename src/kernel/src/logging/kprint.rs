@@ -46,12 +46,12 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
 
     write_log_buf(state, string);
 
-    {  // todo: add init check for serial
+    if SIMPLE_STATE.is_serial_initialized() {
         use crate::logging::serial::_Serial;
         SIMPLE_STATE.serial().lock().write(string);
     }
 
-    {  // todo: add init check for basic fb and psf2 font
+    if SIMPLE_STATE.is_basic_fb_initialized() && SIMPLE_STATE.is_basic_fb_psf2_font_initialized() {
         let fb = SIMPLE_STATE.basic_fb().lock();
         let font = SIMPLE_STATE.basic_fb_psf2_font();
 
