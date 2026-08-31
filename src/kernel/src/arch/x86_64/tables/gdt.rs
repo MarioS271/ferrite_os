@@ -8,7 +8,10 @@ use crate::kinfo;
 use spin::Once;
 use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
 use x86_64::instructions::tables::load_tss;
-use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor};
+use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor, SegmentSelector};
+
+// TODO: not use a once
+// TODO: properly refactor this
 
 /// Owns the kernel `GlobalDescriptorTable`; must not move after [`Gdt::init`]
 /// (the CPU holds its address).
@@ -26,13 +29,13 @@ impl Gdt {
     ///
     /// # Panics
     /// Panics if [`super::tss::Tss::init`] was not called first.
-    pub fn init(&'static self, tss: &'static super::tss::Tss) {
+    pub fn init(&'static self, tss: &'static super::tss::Tss) -> (SegmentSelector, SegmentSelector) {
         let mut gdt = GlobalDescriptorTable::new();
 
         let code = gdt.append(Descriptor::kernel_code_segment());
         let data = gdt.append(Descriptor::kernel_data_segment());
-        let _ucode = gdt.append(Descriptor::user_code_segment());
-        let _udata = gdt.append(Descriptor::user_data_segment());
+        let ucode = gdt.append(Descriptor::user_code_segment());
+        let udata = gdt.append(Descriptor::user_data_segment());
         let tss_sel = gdt.append(Descriptor::tss_segment(tss.get()));
 
         self.table.call_once(|| gdt);
@@ -49,5 +52,7 @@ impl Gdt {
         }
 
         kinfo!("Initialized GDT");
+
+        (ucode, udata)
     }
 }

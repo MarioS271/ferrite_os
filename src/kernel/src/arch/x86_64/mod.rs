@@ -13,8 +13,10 @@ pub(crate) fn init() {
     let cpu = &KSTATE.cpu;
 
     cpu.bsp_cpu_state.tss.init();
-    cpu.bsp_cpu_state.gdt.init(&cpu.bsp_cpu_state.tss);
+    let (ucode, udata) = cpu.bsp_cpu_state.gdt.init(&cpu.bsp_cpu_state.tss);
     cpu.idt.init();
+
+    cpu.set_user_selectors(ucode.0, udata.0);
 
     interrupts::pic::init();
 }
