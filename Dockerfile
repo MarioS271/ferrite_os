@@ -6,7 +6,7 @@ FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
-    curl git make gcc \
+    curl git make gcc nasm \
     xorriso \
     mtools \
     python3 \

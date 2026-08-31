@@ -5,6 +5,9 @@
 
 use crate::types::irq_mutex::{IrqMutex, IrqMutexGuard};
 
+// todo: optimize (only write to buffer and on drop do one big write to serial and fb)
+// todo: refactor to work with the linux boot protocol and behave like linux earlycon serial and parse from boot params
+
 /// Capacity of the in-memory log ring buffer (default: 512 KiB).
 const LOG_BUFFER_SIZE: usize = 1 << 19;
 
@@ -77,15 +80,6 @@ fn kprint(state: &mut IrqMutexGuard<'static, KernelPrintState>, string: &str, co
             }
         }
     }
-}
-
-/// Release [`KPRINT_STATE`]'s lock without restoring the interrupt flag, for panic paths.
-///
-/// # Safety
-/// Same contract as [`IrqMutex::force_unlock`]: only call from a panic handler that
-/// halts immediately after and never accesses [`KPRINT_STATE`] again.
-pub unsafe fn force_unlock_kprint_state() {
-    unsafe { KPRINT_STATE.force_unlock(); }
 }
 
 /// RAII handle that holds the [`KPRINT_STATE`] lock for one `kprint!` call, preventing interleaved output.
