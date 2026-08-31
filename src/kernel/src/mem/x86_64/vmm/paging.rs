@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! VMM Paging: owns a page table, maps, unmaps, remaps and translates pages.
+//! VMM Paging (x86_64): maps, unmaps, remaps and translates pages
 //!
 //! Authors: MarioS271
 
