@@ -6,7 +6,7 @@
 use crate::types::addr::VirtAddr;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
-use core::ops::{BitAnd, BitOr};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
 
 /// A type representing virtual memory areas
 /// > **Important**: `end_addr` is exclusive
@@ -96,11 +96,21 @@ impl BitOr for VmaFlags {
         Self(self.0 | rhs.0)
     }
 }
+impl BitOrAssign for VmaFlags {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0
+    }
+}
 impl BitAnd for VmaFlags {
     type Output = Self;
 
     /// Apply the bitwise AND operation to the two values
     fn bitand(self, rhs: Self) -> Self::Output {
         Self(self.0 & rhs.0)
+    }
+}
+impl BitAndAssign for VmaFlags {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0
     }
 }
