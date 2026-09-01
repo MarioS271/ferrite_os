@@ -130,6 +130,13 @@ impl Pmm {
         self.alloc(0)
     }
 
+    /// Wrapper for [`alloc_frame`] which zeroes the frame before returning it
+    pub fn alloc_frame_zeroed(&mut self) -> Option<PhysAddr> {
+        let frame = self.alloc_frame()?;
+        unsafe { core::ptr::write_bytes(frame.as_mut_hhdm_ptr::<u8>(), 0x00, FRAME_SIZE as usize); }
+        Some(frame)
+    }
+
     /// Return a block of `FRAME_SIZE << order` bytes to the free lists, merging with available buddies
     pub fn free(&mut self, mut addr: PhysAddr, mut order: usize) {
         'outer: while order < MAX_ORDER {

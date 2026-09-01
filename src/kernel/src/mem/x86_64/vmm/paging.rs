@@ -3,7 +3,8 @@
 //!
 //! Authors: MarioS271
 
-use super::helpers::alloc_zeroed_frame;
+// TODO: don't panic on every issue, some errors need to propagate through a VmmError instead to not bring userspace down on a minor issue
+
 use super::page_type::{PageType, HUGE_PAGE_SIZE_1GIB, HUGE_PAGE_SIZE_2MIB};
 use crate::kinfo;
 use crate::mem::pmm::{Pmm, FRAME_SIZE};
@@ -99,8 +100,11 @@ impl VmmPaging for Vmm {
             let entry = unsafe { &mut current_pagetable.as_mut().unwrap()[index] };
 
             if !entry.flags().contains(PageTableFlags::PRESENT) {
-                let frame = alloc_zeroed_frame(pmm);
-                entry.set_frame(frame, intermediate_flags);
+                let frame = pmm.alloc_frame_zeroed().unwrap_or_else(|| out_of_memory_panic());
+                entry.set_frame(
+                    PhysFrame::containing_address(frame.as_x86_64()),
+                    intermediate_flags
+                );
             }
 
             current_pagetable = (entry.frame().unwrap().start_address().as_u64() + hhdm_offset) as *mut PageTable;

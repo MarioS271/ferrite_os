@@ -7,6 +7,7 @@ use crate::mem::pmm::{Pmm, FRAME_SIZE};
 use crate::mem::vmm::address_space::AddressSpace;
 use crate::mem::vmm::traits::VmmPaging;
 use crate::mem::vmm::vma::{Vma, VmaFlags};
+use crate::mem::x86_64::vmm::page_type::PageType;
 use crate::panic::kernel_panic;
 use crate::types::addr::VirtAddr;
 use crate::types::panic_codes::PanicCode;
@@ -18,13 +19,15 @@ pub struct Vmm;
 pub type VmmResult = Result<(), VmmError>;
 
 /// VMM Error Enum with VMM error types
+#[derive(Debug)]
 pub enum VmmError {
     VmaNotFound,
-    VmaOverlap
+    VmaOverlap,
+    OutOfMemory
 }
 
 impl Vmm {
-    /// Map a virtual memory region by creating a VMA in the given [`AddressSpace`]
+    /// Lazily map a virtual memory region by creating a VMA in the given [`AddressSpace`]
     ///
     /// # Panics
     /// Panics in debug builds if either `virt` is not aligned to [`FRAME_SIZE`] or `size`
@@ -32,7 +35,7 @@ impl Vmm {
     ///
     /// # Returns
     /// Returns [`VmmError::VmaOverlap`] if the given region overlaps with an existing VMA
-    pub fn map_region(
+    pub fn lazy_map_region(
         address_space: &mut AddressSpace,
         virt: VirtAddr,
         size: u64,
@@ -53,6 +56,50 @@ impl Vmm {
                 flags: vma_flags
             }
         )
+    }
+
+    /// Map a virtual memory region by creating a VMA in the given [`AddressSpace`] and then mapping matching pages
+    ///
+    /// This method first calls [`Vmm::lazy_map_region`] to create the VMA and do the debug align check,
+    /// and then eagerly maps the necessary pages
+    ///
+    /// # Panics
+    /// Panics in debug builds if either `virt` is not aligned to [`FRAME_SIZE`] or `size`
+    /// is not a multiple of [`FRAME_SIZE`]
+    ///
+    /// # Returns
+    /// Returns [`VmmError::VmaOverlap`] if the given region overlaps with an existing VMA
+    pub fn map_region(
+        pmm: &mut Pmm,
+        address_space: &mut AddressSpace,
+        virt: VirtAddr,
+        size: u64,
+        vma_flags: VmaFlags
+    ) -> VmmResult {
+        Self::lazy_map_region(address_space, virt, size, vma_flags)?;
+
+        let page_ptr = address_space.page_ptr();
+        let page_flags = Self::vma_flags_to_page_flags(vma_flags);
+
+        let mut offset = 0;
+        while offset < size {
+            let frame = pmm.alloc_frame_zeroed().ok_or(VmmError::OutOfMemory)?;
+
+            unsafe {
+                Self::map_page(
+                    pmm,
+                    page_ptr,
+                    virt,
+                    frame,
+                    PageType::Normal,   // TODO: abstract somehow cause arch specific enums cant be used here
+                    page_flags
+                );
+            }
+
+            offset += FRAME_SIZE;
+        }
+
+        Ok(())
     }
 
     /// Unmap a virtual memory region by removing its VMA from the given [`AddressSpace`] and

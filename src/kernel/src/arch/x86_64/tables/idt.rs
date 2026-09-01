@@ -8,6 +8,8 @@ use crate::kinfo;
 use spin::Once;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
+// todo: not use a once
+
 /// The single kernel IDT; must not move after loading (the CPU holds its address).
 pub struct Idt {
     table: Once<InterruptDescriptorTable>
