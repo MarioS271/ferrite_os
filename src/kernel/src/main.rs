@@ -10,6 +10,7 @@
 extern crate alloc;
 
 mod arch;
+mod elf;
 mod init;
 mod logging;
 mod mem;
