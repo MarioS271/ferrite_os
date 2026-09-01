@@ -40,10 +40,11 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
         let serial = SIMPLE_STATE.serial().lock();
 
         serial.write("\nKernel Panic! :(\n");
+        serial.write("Panic Code: ");
         serial.write(panic_code.as_str());
-        serial.write(" (Type: ");
+        serial.write("\nPanic Type: ");
         serial.write(panic_code.get_error_type_str());
-        serial.write(")\n");
+        serial.write("\n\n");
         serial.write(panic_message);
     }
 
@@ -55,10 +56,11 @@ pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
 
         fb.clear();
         font.draw_string(&*fb, "Kernel Panic! :(\n", &mut x, &mut y, Some(0x00FF0000));
+        font.draw_string(&*fb, "Panic Code: ", &mut x, &mut y, None);
         font.draw_string(&*fb, panic_code.as_str(), &mut x, &mut y, None);
-        font.draw_string(&*fb, " (Type: ", &mut x, &mut y, None);
+        font.draw_string(&*fb, "\nPanic Type: ", &mut x, &mut y, None);
         font.draw_string(&*fb, panic_code.get_error_type_str(), &mut x, &mut y, None);
-        font.draw_string(&*fb, ")\n", &mut x, &mut y, None);
+        font.draw_string(&*fb, "\n\n", &mut x, &mut y, None);
         font.draw_string(&*fb, panic_message, &mut x, &mut y, None);
     }
 
