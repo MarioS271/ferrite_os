@@ -29,8 +29,10 @@ To keep the project safe and maintainable, please follow these guidelines.
 
 ### 3.1. Rustdoc
 - Document all functions, methods, structs and statics with one line (or more, but only if the documented item requires) of rustdoc (should start with `///`)
+- If a functions/methods return value is not easily understandable from the signature, a `# Returns` section must be added
 - If the safety of a function/method or similar depends on what the caller does before and after it, that should be documented
-  in the rustdoc in a `# Safety` section.
+  in the rustdoc in a `# Safety` section. Additionally, anytime a function/method has a `# Safety` rustdoc section, that
+  function/method should be an `unsafe fn`.
 - If a function/method or similar has any code path which panics (via `kernel_panic`/`panic!` or similar that invokes the `#[panic_handler]`),
   this should be documented in the rustdoc in a `# Panics` section.
 
@@ -52,9 +54,15 @@ File headers should look like the following:
 - Keep `unsafe` blocks minimal and always document why they are necessary
 - When documenting `unsafe` blocks, use a line comment (`//`) starting with `Safety: ` which should be located in the row above the `unsafe` block
 - For `unsafe` blocks with inline assembly, do not document *why* the unsafe is there, rather document why the inline asm is needed.
-- When documenting an unsafe block in a function or method, the unsafe block may also be documented in the functions/methods rustdoc, if it
-  is logical to which unsafe block the rustdoc unsafe notice applies to (a good example is a simple one-line getter with an unsafe block
-  which depends on the initialization state of the kernel)
+- If a function/method depends on when or from where it is called, this should be documented according to rule 3 of [§ 3.1 Rustdoc](#31-rustdoc).
+  Additionally, the unsafe(s) which are affected by these conditions must not be documented twice, if it is clear to which unsafe(s) the `# Safety`
+  rustdoc section applies. If it is not clear, add a comment along the lines of `// Safety: refer to the rustdoc's "Safety" section`
+- For an `unsafe impl` or a trait like `Sync` or `Send`, you must use a rustdoc comment (`///`) for documenting why or under which conditions the impl is safe.
+  This is a justification just like a normal `// Safety: ...` comment, please write it as such.
+  `///` is used in order for the justification to show up in the generated rustdoc.
+- When documenting `unsafe` functions/methods, clearly separate what the **caller** must guarantee
+  (documented in the `# Safety` rustdoc section) from what the **function itself** guarantees
+  (documented in `// Safety:` comments on the internal `unsafe` blocks). Avoid documenting the same invariant in both places.
 
 ## 4. Content
 
