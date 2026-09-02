@@ -41,7 +41,10 @@ impl AddressSpace {
         let _ = self.insert_vma(
             Vma {
                 start_addr: VirtAddr::new(KSTATE.mm.hhdm_offset()),
-                end_addr: VirtAddr::from_phys(PhysAddr::new(KSTATE.mm.pmm().lock().get_total_mem())),
+                end_addr: VirtAddr::from_phys(PhysAddr::new(
+                    // Safety: the PMM gets initialized before any address space does
+                    unsafe { KSTATE.mm.pmm().lock().get_total_mem() }
+                )),
                 flags: VmaFlags::READ | VmaFlags::WRITE
             }
         );

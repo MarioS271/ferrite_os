@@ -14,7 +14,7 @@ use super::subsystems::sched::Sched;
 use super::subsystems::mm::Mm;
 use super::subsystems::irq::Irq;
 use super::subsystems::time::Time;
-use super::subsystems::cpu::Cpu;
+use super::subsystems::cpu::cpu::Cpu;
 use super::subsystems::fs::Fs;
 use super::subsystems::procs::Procs;
 

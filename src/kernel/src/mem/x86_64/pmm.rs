@@ -6,6 +6,8 @@
 #[cfg(feature = "debug-logging")]
 use crate::kdebug;
 
+// TODO: correct safety comments and declarations
+
 use crate::kinfo;
 use crate::state::kstate::KSTATE;
 use crate::types::addr::PhysAddr;

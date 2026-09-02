@@ -24,8 +24,6 @@ impl ElfPhdr {
     pub const PF_X: u32 = 1;
     pub const PF_W: u32 = 2;
     pub const PF_R: u32 = 4;
-
-
 }
 
 pub fn parse_phdrs<'a>(elf: &'a [u8], header: &ElfHeader) -> Result<&'a [ElfPhdr], ElfError> {

@@ -19,8 +19,11 @@ pub struct Mm {
     kernel_addr_space: UnsafeCell<MaybeUninit<IrqMutex<AddressSpace>>>
 }
 
-/// Safety: Sync is safe because everything is only initialized once and non-sync objects
-/// are wrapped in IrqMutex
+/// Safety:
+/// - `hhdm_offset` is an [`AtomicU64`] and therefore is already [`Sync`]
+/// - `pmm` and `kernel_addr_space` are only written to exactly once before any concurrent
+///   access can occur. After the calls to `init_pmm`/`init_kernel_addr_space`, no mutable
+///   reference or pointer to any of the two is ever held again
 unsafe impl Sync for Mm {}
 
 impl Mm {
@@ -39,14 +42,24 @@ impl Mm {
     }
 
     /// Move the given [`Pmm`] into `KSTATE::mm::pmm`
-    pub fn init_pmm(&self, pmm: Pmm) {
-        // Safety: the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
+    ///
+    /// # Safety
+    /// This method derefs `self.pmm.get()`
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - There must be no mutable references or pointers to `self.pmm`
+    /// - This method must be called exactly once
+    pub unsafe fn init_pmm(&self, pmm: Pmm) {
         unsafe { (*self.pmm.get()).write(IrqMutex::new(pmm)); }
     }
 
     /// Move the given [`AddressSpace`] into `KSTATE::mm::kernel_addr_space`
-    pub fn init_kernel_addr_space(&self, kernel_addr_space: AddressSpace) {
-        // Safety: the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
+    ///
+    /// # Safety
+    /// This method derefs `self.kernel_addr_space.get()`.
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - There must be no mutable references or pointers to `self.kernel_addr_space`
+    /// - This method must be called exactly once
+    pub unsafe fn init_kernel_addr_space(&self, kernel_addr_space: AddressSpace) {
         unsafe { (*self.kernel_addr_space.get()).write(IrqMutex::new(kernel_addr_space)); }
     }
 
@@ -63,31 +76,25 @@ impl Mm {
         }
     }
 
-    /// Getter for KSTATE::mm::pmm
+    /// Getter for `KSTATE::mm::pmm`
     ///
     /// # Safety
-    /// This getter wraps the unsafe function [`MaybeUninit::assume_init_ref()`] in a safe getter
-    /// to avoid many unsafe blocks everywhere. This does NOT remove the unsafe factor, the caller
-    /// must still ensure that this value is initialized BEFORE the getter is called. Otherwise,
-    /// undefined data will be returned.
-    pub fn pmm(&self) -> &IrqMutex<Pmm> {
-        // Safety:
-        // 1) the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
-        // 2) assume_init_ref is not guaranteed to be safe, the caller must guarantee this
+    /// This method derefs `self.pmm.get()` and calls [`MaybeUninit::assume_init_ref()`].
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - `self.pmm` must have been initialized first (via `init_pmm`)
+    /// - There must be no mutable references or pointers to `self.pmm`
+    pub unsafe fn pmm(&self) -> &IrqMutex<Pmm> {
         unsafe { (*self.pmm.get()).assume_init_ref() }
     }
 
-    /// Getter for KSTATE::mm::kernel_address_space
+    /// Getter for `KSTATE::mm::kernel_address_space`
     ///
     /// # Safety
-    /// This getter wraps the unsafe function [`MaybeUninit::assume_init_ref()`] in a safe getter
-    /// to avoid many unsafe blocks everywhere. This does NOT remove the unsafe factor, the caller
-    /// must still ensure that this value is initialized BEFORE the getter is called. Otherwise,
-    /// undefined data will be returned.
-    pub fn kernel_addr_space(&self) -> &IrqMutex<AddressSpace> {
-        // Safety:
-        // 1) the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
-        // 2) assume_init_ref is not guaranteed to be safe, the caller must guarantee this
+    /// This method derefs `self.kernel_addr_space.get()` and calls [`MaybeUninit::assume_init_ref()`].
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - `self.kernel_addr_space` must have been initialized first (via `init_kernel_addr_space`)
+    /// - There must be no mutable references or pointers to `self.kernel_addr_space`
+    pub unsafe fn kernel_addr_space(&self) -> &IrqMutex<AddressSpace> {
         unsafe { (*self.kernel_addr_space.get()).assume_init_ref() }
     }
 }

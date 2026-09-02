@@ -18,7 +18,10 @@ pub struct Procs {
     active_pid: AtomicPid
 }
 
-/// Safety: Sync is safe because everything is either atomic or wrapped in [`IrqMutex`]
+/// Safety:
+/// - `procs` is written to exactly once before concurrent access can happen;
+///   after [`Procs::init_procs`] no mutable reference/pointer is ever created again
+/// - `active_pid` is an [`AtomicPid`] and therefore is already [`Sync`]
 unsafe impl Sync for Procs {}
 
 impl Procs {
@@ -31,8 +34,13 @@ impl Procs {
     }
 
     /// Initialize an empty [`BTreeSet`] inside `Procs::procs`
-    pub fn init_procs(&self) {
-        // Safety: the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
+    ///
+    /// # Safety
+    /// This method derefs `self.procs.get()`.
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - There must be no mutable references or pointers to `self.procs`
+    /// - This method must be called exactly once
+    pub unsafe fn init_procs(&self) {
         unsafe { (*self.procs.get()).write(IrqMutex::new(BTreeSet::new())); }
     }
 
@@ -44,14 +52,11 @@ impl Procs {
     /// Getter for `Procs::procs`
     ///
     /// # Safety
-    /// This getter wraps the unsafe function [`MaybeUninit::assume_init_ref()`] in a safe getter
-    /// to avoid many unsafe blocks everywhere. This does NOT remove the unsafe factor, the caller
-    /// must still ensure that this value is initialized BEFORE the getter is called. Otherwise,
-    /// undefined data will be returned.
-    pub fn procs(&self) -> &IrqMutex<BTreeSet<ProcessData>> {
-        // Safety:
-        // 1) the deref is always safe, as the deref'd object is the statically initialized MaybeUninit
-        // 2) assume_init_ref is not guaranteed to be safe, the caller must guarantee this
+    /// This method derefs `self.procs.get()` and calls [`MaybeUninit::assume_init_ref()`].
+    /// The following conditions **must** be met to avoid undefined behavior when calling this method:
+    /// - `self.procs` must have been initialized first (via `init_procs`)
+    /// - There must be no mutable references or pointers to `self.procs`
+    pub unsafe fn procs(&self) -> &IrqMutex<BTreeSet<ProcessData>> {
         unsafe { (*self.procs.get()).assume_init_ref() }
     }
 

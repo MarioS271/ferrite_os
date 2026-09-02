@@ -12,11 +12,19 @@ pub(crate) fn init() {
     use crate::state::kstate::KSTATE;
     let cpu = &KSTATE.cpu;
 
-    cpu.bsp_cpu_state.tss.init();
-    let (ucode, udata) = cpu.bsp_cpu_state.gdt.init(&cpu.bsp_cpu_state.tss);
-    cpu.idt.init();
+    let user_code;
+    let user_data;
 
-    cpu.set_user_selectors(ucode.0, udata.0);
+    // Safety:
+    // - These two methods are called exactly once here
+    // - init_tss is called before init_gdt
+    // - No SMP/threading is currently active
+    unsafe {
+        cpu.bsp_cpu_state().init_tss();
+        (user_code, user_data) = cpu.bsp_cpu_state().init_gdt();
+        cpu.global_cpu_state().init_idt();
+    }
+    cpu.global_cpu_state().set_user_selectors(user_code.0, user_data.0);
 
     interrupts::pic::init();
 }

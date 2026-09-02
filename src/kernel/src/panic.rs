@@ -25,7 +25,8 @@ enum PanicTriggered {
 #[cold]
 pub fn kernel_panic(panic_code: PanicCode, panic_message: &str) -> ! {
     instructions::disable_interrupts();
-    force_unlock_loggers();
+    // Safety: We acknowledge the risk of corrupted output, which isn't too bad considering we already panic'd
+    unsafe { force_unlock_loggers(); }
 
     if PANIC_TRIGGERED.load(Ordering::Acquire) & PanicTriggered::WasKernelPanicTriggered as u8 != 0 {
         core::hint::cold_path();
@@ -75,7 +76,8 @@ fn panic(panic_info: &PanicInfo) -> ! {
     use core::fmt::Write;
 
     instructions::disable_interrupts();
-    force_unlock_loggers();
+    // Safety: We acknowledge the risk of corrupted output, which isn't too bad considering we already panic'd
+    unsafe { force_unlock_loggers(); }
 
     if PANIC_TRIGGERED.load(Ordering::Acquire) | PanicTriggered::WasRustPanicTriggered as u8 != 0 {
         core::hint::cold_path();
@@ -131,10 +133,9 @@ fn panic(panic_info: &PanicInfo) -> ! {
 /// Force-unlocks the kernel serial logger and the basic framebuffer
 ///
 /// # Safety
-/// Worst case, serial + basic fb output gets interrupted/cut off, which isn't a big deal
-/// considering the kernel has panicked
-fn force_unlock_loggers() {
-    // Safety: refer to above notice
+/// Calling this will force-unlock the serial and basic_fb `IrqMutex`es, which can result in
+/// corrupted output. This should only be called from irrecoverable scenarios such as a kernel panic.
+unsafe fn force_unlock_loggers() {
     unsafe {
         SIMPLE_STATE.serial().force_unlock();
         SIMPLE_STATE.basic_fb().force_unlock();

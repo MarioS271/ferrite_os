@@ -7,6 +7,8 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use x86_64::instructions::port::Port;
 use crate::logging::serial::{SerialPort, _Serial};
 
+// TODO: correct safety comments and declarations
+
 static COM1_BASE_ADDRESS: u16 = 0x03F8;
 static COM2_BASE_ADDRESS: u16 = 0x02F8;
 static COM3_BASE_ADDRESS: u16 = 0x03E8;
@@ -15,7 +17,6 @@ static COM4_BASE_ADDRESS: u16 = 0x02E8;
 /// x86_64 UART serial port implementing [`_Serial`]; do not `write()` before `init()`.
 pub struct Serial {
     initialized: AtomicBool,
-    /// I/O base address for this COM port (e.g., `0x03F8` for COM1).
     base_addr: u16,
 }
 

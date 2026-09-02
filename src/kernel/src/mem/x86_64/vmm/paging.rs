@@ -4,6 +4,7 @@
 //! Authors: MarioS271
 
 // TODO: don't panic on every issue, some errors need to propagate through a VmmError instead to not bring userspace down on a minor issue
+// TODO: correct safety comments and declarations
 
 use super::page_type::{PageType, HUGE_PAGE_SIZE_1GIB, HUGE_PAGE_SIZE_2MIB};
 use crate::kinfo;
@@ -29,9 +30,10 @@ impl VmmPaging for Vmm {
         // TODO: do own paging
 
         let hhdm_offset = &KSTATE.mm.hhdm_offset();
-        let mut pmm = KSTATE.mm.pmm().lock();
-
         let limine_page_ptr = (Cr3::read().0.start_address().as_u64() + hhdm_offset) as *const PageTable;
+
+        // Safety: the PMM gets initialized before paging in mm_init
+        let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
 
         let kernel_page_ptr = (
             pmm.alloc_frame().unwrap_or_else(|| out_of_memory_panic()).as_u64() + hhdm_offset
@@ -151,6 +153,7 @@ impl VmmPaging for Vmm {
             entry.set_unused();
             tlb::flush(virt.as_x86_64());
         };
+        #[allow(unused_variables)]
         let debug_log = |virt: &VirtAddr| {
             #[cfg(feature = "vmm-debug-logging")]
             crate::kdebug!("[VMM] unmap page at virt {virt:#x}");
@@ -215,6 +218,7 @@ impl VmmPaging for Vmm {
         let flush_tlb = || {
             tlb::flush(virt.as_x86_64());
         };
+        #[allow(unused_variables)]
         let debug_log = |virt: &VirtAddr, flags: &PageTableFlags| {
             #[cfg(feature = "vmm-debug-logging")]
             crate::kdebug!("[VMM] remap page at virt {virt:#x} to flags {flags:?}");

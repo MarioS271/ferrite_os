@@ -24,7 +24,6 @@ use crate::arch::instructions;
 use crate::elf::defs::phdrs::{parse_phdrs, ElfPhdr};
 use crate::mem::pmm::FRAME_SIZE;
 use crate::mem::vmm::address_space::AddressSpace;
-use crate::mem::vmm::vma::VmaFlags;
 use crate::panic::kernel_panic;
 use crate::state::kstate::KSTATE;
 use crate::state::simple_state::SIMPLE_STATE;
@@ -63,6 +62,7 @@ extern "C" fn kmain() -> ! {
     init::mem::mm_init();
     instructions::enable_interrupts();
 
+
     // elf loading + userspace execution for stardance goal (this format is temporary, dw)
     // TODO: refactor this properly into KSTATE.procs and so on
 
@@ -91,9 +91,10 @@ extern "C" fn kmain() -> ! {
 fn serial_init() {
     use crate::logging::serial::{Serial, SerialPort, _Serial};
 
-    SIMPLE_STATE.init_serial(
+    // Safety: we are in a non-SMP/non-threading context
+    unsafe { SIMPLE_STATE.init_serial(
         Serial::new(SerialPort::Serial1)
-    );
+    ) };
 }
 
 /// Initializes the Basic Framebuffer
@@ -104,8 +105,11 @@ fn basic_fb_init() {
     if let Some(fb_response) = LIMINE_FRAMEBUFFER_REQUEST.response()
         && let Some(fb) = fb_response.framebuffers().first()
     {
-        SIMPLE_STATE.init_basic_fb(BasicFramebuffer::new(fb));
-        SIMPLE_STATE.init_basic_fb_psf2_font(Psf2Font::init());
+        // Safety: we are in a non-SMP/non-threading context
+        unsafe {
+            SIMPLE_STATE.init_basic_fb(BasicFramebuffer::new(fb));
+            SIMPLE_STATE.init_basic_fb_psf2_font(Psf2Font::init());
+        }
     } else {
         kernel_panic(
             PanicCode::InitFailure,
@@ -164,7 +168,8 @@ fn validate_elf() -> Option<(&'static [ElfPhdr], u64)> {
 fn create_new_addr_space() -> AddressSpace {
     use mem::pmm::FRAME_SIZE;
 
-    let pml4_frame = KSTATE.mm.pmm().lock().alloc_frame().unwrap_or_else(
+    // Safety: the PMM was already initialized in mm_init
+    let pml4_frame = unsafe { KSTATE.mm.pmm() }.lock().alloc_frame().unwrap_or_else(
         || kernel_panic(
             PanicCode::OutOfMemory,
             "Could not allocate a PML4 for the to load ELF, out of memory"
@@ -204,13 +209,18 @@ fn map_phdrs_and_copy_elf(addr_space: &mut AddressSpace, phdrs: &[ElfPhdr], elf:
         if phdr.p_flags & ElfPhdr::PF_W != 0 { vma_flags |= VmaFlags::WRITE; }
         if phdr.p_flags & ElfPhdr::PF_X != 0 { vma_flags |= VmaFlags::EXEC; }
 
+        // Safety: the PMM was already initialized in mm_init
+        let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
+
         let res = Vmm::map_region(
-            &mut KSTATE.mm.pmm().lock(),
+            &mut pmm,
             addr_space,
             vaddr_start,
             size,
             vma_flags
         );
+
+        drop(pmm);
 
         if res.is_err() {
             // not unusable here, just wanna see the "!" :D
@@ -263,13 +273,19 @@ fn setup_user_stack(addr_space: &mut AddressSpace) -> VirtAddr {
     let stack_top = VirtAddr::new(0x0000_7fff_ffff_0000);
     let stack_bottom = stack_top - stack_size;
 
-    let res = Vmm::map_region(  // TODO: lazily map this (needs user pf handler which needs this to be in KSTATE.procs properly)
-        &mut KSTATE.mm.pmm().lock(),
+    // Safety: the PMM was already initialized in mm_init
+    let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
+
+    // TODO: lazily map this (needs user pf handler which needs this to be in KSTATE.procs properly)
+    let res = Vmm::map_region(
+        &mut pmm,
         addr_space,
         stack_bottom,
         stack_size,
         VmaFlags::USER | VmaFlags::READ | VmaFlags::WRITE
     );
+
+    drop(pmm);
 
     // not unusable here, just wanna see the "!" :D
     if res.is_err() {
@@ -285,8 +301,8 @@ fn setup_user_stack(addr_space: &mut AddressSpace) -> VirtAddr {
 }
 
 fn jump_to_userspace(addr_space: &AddressSpace, entry: u64, stack_top: VirtAddr) -> ! {
-    let cs = KSTATE.cpu.user_code_selector() as u64;
-    let ss = KSTATE.cpu.user_data_selector() as u64;
+    let cs = KSTATE.cpu.global_cpu_state().user_code_selector() as u64;
+    let ss = KSTATE.cpu.global_cpu_state().user_data_selector() as u64;
 
     let pml4_phys = addr_space.page_ptr().as_u64() - KSTATE.mm.hhdm_offset();
 

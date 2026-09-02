@@ -30,19 +30,23 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 /// # Panics
 /// Panics with [`PanicCode::OutOfMemory`] if the PMM cannot satisfy any frame allocation.
 pub fn init(kernel_root_page: VirtAddr) {
-    let mut pmm = KSTATE.mm.pmm().lock();
+    // Safety: the PMM gets initialized before the heap in mm_init
+    let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
 
     const HUGE_PAGE_SIZE: usize = 0x200_000; // 2 MiB
     const NUM_HUGE_PAGES: usize = HEAP_SIZE / HUGE_PAGE_SIZE; // 2
 
-    unsafe {
-        for page in 0..NUM_HUGE_PAGES {
-            let phys = pmm.alloc(9).unwrap_or_else(
-                || kernel_panic(
-                    PanicCode::OutOfMemory,
-                    "Out of memory for heap"
-                )
-            );
+    for page in 0..NUM_HUGE_PAGES {
+        let phys = pmm.alloc(9).unwrap_or_else(
+            || kernel_panic(
+                PanicCode::OutOfMemory,
+                "Out of memory for heap"
+            )
+        );
+
+        // Safety: kernel_root_page is the valid kernel PML4, phys is a valid frame that was
+        // just mapped
+        unsafe {
             Vmm::map_page(
                 &mut pmm,
                 kernel_root_page,
@@ -52,7 +56,11 @@ pub fn init(kernel_root_page: VirtAddr) {
                 PageTableFlags::WRITABLE,
             );
         }
+    }
 
+    // Safety: init was never called before, the given heap base addr is valid, static and not
+    // used for anything else
+    unsafe {
         ALLOCATOR.lock().init(HEAP_BASE_ADDRESS.as_mut_ptr::<u8>(), HEAP_SIZE);
     }
 }

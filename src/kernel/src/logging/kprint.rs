@@ -5,8 +5,9 @@
 
 use crate::types::irq_mutex::{IrqMutex, IrqMutexGuard};
 
-// todo: optimize (only write to buffer and on drop do one big write to serial and fb)
-// todo: refactor to work with the linux boot protocol and behave like linux earlycon serial and parse from boot params
+// TODO: optimize (only write to buffer and on drop do one big write to serial and fb)
+// TODO: refactor to work with the linux boot protocol and behave like linux earlycon serial and parse from boot params
+// TODO: correct safety comments and declarations
 
 /// Capacity of the in-memory log ring buffer (default: 512 KiB).
 const LOG_BUFFER_SIZE: usize = 1 << 19;

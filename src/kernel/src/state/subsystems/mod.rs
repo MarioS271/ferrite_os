@@ -3,16 +3,16 @@
 //!
 //! Authors: MarioS271
 
-pub mod dev;
-pub mod vdev;
-pub mod sys;
-pub mod mnt;
-pub mod net;
-pub mod ipc;
-pub mod sched;
-pub mod mm;
-pub mod irq;
-pub mod time;
-pub mod cpu;
-pub mod fs;
-pub mod procs;
+pub(crate) mod dev;
+pub(crate) mod vdev;
+pub(crate) mod sys;
+pub(crate) mod mnt;
+pub(crate) mod net;
+pub(crate) mod ipc;
+pub(crate) mod sched;
+pub(crate) mod mm;
+pub(crate) mod irq;
+pub(crate) mod time;
+pub(crate) mod cpu;
+pub(crate) mod fs;
+pub(crate) mod procs;

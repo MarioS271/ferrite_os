@@ -37,7 +37,9 @@ fn handle_kernel_pf(
     error_code: PageFaultErrorCode,
     faulting_virt: VirtAddr
 ) {
-    let addr_space = KSTATE.mm.kernel_addr_space().lock();
+    // Safety: interrupts only get enabled after full mm kernel init, which guarantees that
+    // kernel_addr_space is already initialized
+    let addr_space = unsafe { KSTATE.mm.kernel_addr_space().lock() };
     let vma = addr_space.find_vma(faulting_virt).unwrap_or_else(
         || kernel_pf_panic(
             "Could not find VMA to map a page for",
@@ -49,7 +51,9 @@ fn handle_kernel_pf(
     let page_ptr = addr_space.page_ptr();
     drop(addr_space);
 
-    let mut pmm = KSTATE.mm.pmm().lock();
+    // Safety: interrupts only get enabled after full mm kernel init, which guarantees that
+    // pmm is already initialized
+    let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
     let frame = pmm.alloc_frame().unwrap_or_else(
         || kernel_pf_panic(
             "Could not map a new page, out of memory",
@@ -57,6 +61,8 @@ fn handle_kernel_pf(
         )
     );
 
+    // Safety: page_ptr is the correct virtual address of the kernel PML4 and frame is a valid
+    // PMM-allocated memory frame
     unsafe {
         Vmm::map_page(
             &mut pmm,

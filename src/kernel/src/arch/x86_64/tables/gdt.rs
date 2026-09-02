@@ -4,55 +4,54 @@
 //!
 //! Authors: MarioS271
 
+use crate::arch::tables::tss::Tss;
 use crate::kinfo;
-use spin::Once;
-use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
 use x86_64::instructions::tables::load_tss;
-use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor, SegmentSelector};
+use x86_64::registers::segmentation::{Segment, CS, DS, ES, SS};
+use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 
-// TODO: not use a once
-// TODO: properly refactor this
-
-/// Owns the kernel `GlobalDescriptorTable`; must not move after [`Gdt::init`]
-/// (the CPU holds its address).
-pub struct Gdt {
-    table: Once<GlobalDescriptorTable>,
+pub struct GdtSetupInfo {
+    pub kernel_code: SegmentSelector,
+    pub kernel_data: SegmentSelector,
+    pub user_code: SegmentSelector,
+    pub user_data: SegmentSelector,
+    pub tss_selector: SegmentSelector
 }
 
-impl Gdt {
-    /// Create a new, uninitialized `Gdt`; call [`Gdt::init`] to populate and load it.
-    pub const fn new() -> Self {
-        Self { table: Once::new() }
+/// Build the GDT and return it and a struct containing it and all its segment selectors
+pub fn gdt_init(tss: &'static Tss) -> (GlobalDescriptorTable, GdtSetupInfo) {
+    let mut gdt = GlobalDescriptorTable::new();
+
+    let kernel_code = gdt.append(Descriptor::kernel_code_segment());
+    let kernel_data = gdt.append(Descriptor::kernel_data_segment());
+    let user_code = gdt.append(Descriptor::user_code_segment());
+    let user_data = gdt.append(Descriptor::user_data_segment());
+    let tss_selector = gdt.append(Descriptor::tss_segment(unsafe { tss.tss() }));
+
+    (gdt, GdtSetupInfo {
+        kernel_code,
+        kernel_data,
+        user_code,
+        user_data,
+        tss_selector
+    })
+}
+
+/// Load the GDT and its selectors
+///
+/// # Safety
+/// The caller must guarantee that the given segment selectors in `gdt_setup_info` are valid
+/// and point to the given `gdt`
+pub unsafe fn gdt_load(gdt: &'static GlobalDescriptorTable, gdt_setup_info: &GdtSetupInfo) {
+    gdt.load();
+
+    unsafe {
+        CS::set_reg(gdt_setup_info.kernel_code);
+        SS::set_reg(gdt_setup_info.kernel_data);
+        DS::set_reg(gdt_setup_info.kernel_data);
+        ES::set_reg(gdt_setup_info.kernel_data);
+        load_tss(gdt_setup_info.tss_selector);
     }
 
-    /// Build and load the GDT, then reload the segment registers and load the TSS.
-    ///
-    /// # Panics
-    /// Panics if [`super::tss::Tss::init`] was not called first.
-    pub fn init(&'static self, tss: &'static super::tss::Tss) -> (SegmentSelector, SegmentSelector) {
-        let mut gdt = GlobalDescriptorTable::new();
-
-        let code = gdt.append(Descriptor::kernel_code_segment());
-        let data = gdt.append(Descriptor::kernel_data_segment());
-        let ucode = gdt.append(Descriptor::user_code_segment());
-        let udata = gdt.append(Descriptor::user_data_segment());
-        let tss_sel = gdt.append(Descriptor::tss_segment(tss.get()));
-
-        self.table.call_once(|| gdt);
-        self.table.get().unwrap().load();
-
-        // Safe: the GDT is stored in a static-lifetime Once and will not move;
-        // selectors point to valid descriptors appended above.
-        unsafe {
-            CS::set_reg(code);
-            SS::set_reg(data);
-            DS::set_reg(data);
-            ES::set_reg(data);
-            load_tss(tss_sel);
-        }
-
-        kinfo!("Initialized GDT");
-
-        (ucode, udata)
-    }
+    kinfo!("Initialized GDT");
 }
