@@ -4,4 +4,4 @@
 //! Authors: MarioS271
 
 pub(crate) mod irq0_timer;
-pub(crate) mod irq7;
+pub(crate) mod irq7_spurious;

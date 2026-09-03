@@ -8,6 +8,7 @@ use x86_64::instructions::port::Port;
 use crate::logging::serial::{SerialPort, _Serial};
 
 // TODO: correct safety comments and declarations
+// TODO: refactor maybe
 
 static COM1_BASE_ADDRESS: u16 = 0x03F8;
 static COM2_BASE_ADDRESS: u16 = 0x02F8;
@@ -48,8 +49,6 @@ impl _Serial for Serial {
                 return Err("Serial is already initialized");
             }
 
-            self.initialized.store(true, Ordering::Relaxed);
-
             at_offset(self.base_addr, 1).write(0x00);     // Disable Interrupts.
             at_offset(self.base_addr, 3).write(0x80);     // Enable DLAB (divisor latch access bit)
             at_offset(self.base_addr, 0).write(0x01);     // Baud Rate Divisor (low byte)
@@ -58,11 +57,17 @@ impl _Serial for Serial {
             at_offset(self.base_addr, 2).write(0xC7);     // Enable and clear FIFO
             at_offset(self.base_addr, 4).write(0x0B);     // Set DTR, RTS, OUT2
 
+            self.initialized.store(true, Ordering::Relaxed);
+
             Ok(())
         }
     }
 
     fn write(&self, string: &str) {
+        if self.initialized.load(Ordering::Acquire) == false {
+            return;
+        }
+
         let mut port: Port<u8> = Port::new(self.base_addr);
 
         for byte in string.bytes() {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Double-fault exception handler (vector 8).
+//! Double-fault exception handler (vector 8, `#DF`).
 //!
 //! Authors: MarioS271
 

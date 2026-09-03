@@ -21,7 +21,7 @@ pub fn mm_init() {
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
         // Safety: init_pmm is only called once which is here; no SMP/threading is currently active
         unsafe { KSTATE.mm.init_pmm(mem::pmm::Pmm::init(memmap_response.entries())) };
-        kernel_page = Vmm::setup_kernel_page();
+        kernel_page = Vmm::setup_kernel_paging();
 
         reclaim_bootloader_memory(memmap_response);
     } else {
@@ -121,11 +121,16 @@ fn remap_kernel_pages() {
             // Safety: page_ptr comes from KSTATE.mm.addr_space which was correctly initialized
             // earlier in mm_init; addr comes from a valid VMA
             unsafe {
-                Vmm::remap_page(
+                if Vmm::remap_page(
                     addr_space.page_ptr(),
                     addr,
                     flags
-                );
+                ).is_err() {
+                    kernel_panic(
+                        PanicCode::InvalidPageOperation,
+                        "Invalid page remap while attempting to remap kernel pages"
+                    );
+                };
             }
 
             addr += FRAME_SIZE;

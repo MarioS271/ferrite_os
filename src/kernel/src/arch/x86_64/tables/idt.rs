@@ -38,6 +38,7 @@ pub fn idt_init() -> InterruptDescriptorTable {
 
     // IRQs
     idt[32].set_handler_fn(irqs::irq0_timer::handler);
+    idt[39].set_handler_fn(irqs::irq7_spurious::handler);
 
     kinfo!("Initialized IDT");
 

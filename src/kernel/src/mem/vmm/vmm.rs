@@ -12,6 +12,8 @@ use crate::panic::kernel_panic;
 use crate::types::addr::VirtAddr;
 use crate::types::panic_codes::PanicCode;
 
+// TODO: huge page stuff idk
+
 /// Namespace for all VMM methods
 pub struct Vmm;
 
@@ -21,9 +23,11 @@ pub type VmmResult = Result<(), VmmError>;
 /// VMM Error Enum with VMM error types
 #[derive(Debug)]
 pub enum VmmError {
+    OutOfMemory,
+    InvalidUnmap,
+    InvalidRemap,
     VmaNotFound,
-    VmaOverlap,
-    OutOfMemory
+    VmaOverlap
 }
 
 impl Vmm {
@@ -93,7 +97,7 @@ impl Vmm {
                     frame,
                     PageType::Normal,   // TODO: abstract somehow cause arch specific enums cant be used here
                     page_flags
-                );
+                )?;
             }
 
             offset += FRAME_SIZE;
@@ -136,7 +140,7 @@ impl Vmm {
         let mut offset = 0;
         while offset < size {
             if let Some(phys) = Self::translate(address_space.page_ptr(), virt + offset) {
-                unsafe { Self::unmap_page(address_space.page_ptr(), virt + offset); }
+                unsafe { Self::unmap_page(address_space.page_ptr(), virt + offset)?; }
                 pmm.free_frame(phys);
             }
 
@@ -185,7 +189,7 @@ impl Vmm {
         let mut offset = 0;
         while offset < size {
             if let Some((_, page_size)) = Self::translate_with_size(address_space.page_ptr(), virt + offset) {
-                unsafe { Self::remap_page(address_space.page_ptr(), virt + offset, new_page_flags); }
+                unsafe { Self::remap_page(address_space.page_ptr(), virt + offset, new_page_flags)?; }
                 offset += page_size;
             } else {
                 offset += FRAME_SIZE;

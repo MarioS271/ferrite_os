@@ -47,14 +47,19 @@ pub fn init(kernel_root_page: VirtAddr) {
         // Safety: kernel_root_page is the valid kernel PML4, phys is a valid frame that was
         // just mapped
         unsafe {
-            Vmm::map_page(
+            if Vmm::map_page(
                 &mut pmm,
                 kernel_root_page,
                 HEAP_BASE_ADDRESS + (page * HUGE_PAGE_SIZE) as u64,
                 phys,
                 PageType::HugePage2MiB,
                 PageTableFlags::WRITABLE,
-            );
+            ).is_err() {
+                kernel_panic(
+                    PanicCode::OutOfMemory,
+                    "Could not map one or more kernel heap pages, out of memory"
+                )
+            }
         }
     }
 

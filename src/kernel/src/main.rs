@@ -92,9 +92,12 @@ fn serial_init() {
     use crate::logging::serial::{Serial, SerialPort, _Serial};
 
     // Safety: we are in a non-SMP/non-threading context
-    unsafe { SIMPLE_STATE.init_serial(
-        Serial::new(SerialPort::Serial1)
-    ) };
+    unsafe {
+        SIMPLE_STATE.init_serial(
+            Serial::new(SerialPort::Serial1)
+        );
+        let _ = SIMPLE_STATE.serial().lock().init();
+    };
 }
 
 /// Initializes the Basic Framebuffer

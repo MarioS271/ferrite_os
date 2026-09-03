@@ -12,7 +12,6 @@ pub enum ElfError {
     NotExecutable,
     WrongArch,
     BadPhentsize,
-    UnsupportedType,
     PhdrsOutOfBounds,
     MisalignedPhdrs,
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Page-fault exception handler (vector 14).
+//! Page-fault exception handler (vector 14, `#PF`).
 //!
 //! Authors: MarioS271
 
@@ -64,14 +64,19 @@ fn handle_kernel_pf(
     // Safety: page_ptr is the correct virtual address of the kernel PML4 and frame is a valid
     // PMM-allocated memory frame
     unsafe {
-        Vmm::map_page(
+        if Vmm::map_page(
             &mut pmm,
             page_ptr,
             faulting_virt.align_down(FRAME_SIZE),
             frame,
             PageType::Normal,
             Vmm::vma_flags_to_page_flags(flags)
-        );
+        ).is_err() {
+            kernel_panic(
+                PanicCode::OutOfMemory,
+                "Could not lazy-map a page, out of memory"
+            );
+        }
     }
 }
 

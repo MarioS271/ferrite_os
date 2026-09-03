@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! General Protection Fault exception handler (vector 13).
+//! General Protection Fault exception handler (vector 13, `#GP`).
 //!
 //! Authors: MarioS271
 

@@ -5,6 +5,7 @@
 
 use crate::mem::pmm::Pmm;
 use crate::mem::vmm::vma::VmaFlags;
+use crate::mem::vmm::VmmResult;
 use crate::types::addr::{PhysAddr, VirtAddr};
 
 pub trait VmmPaging {
@@ -15,16 +16,13 @@ pub trait VmmPaging {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate memory for the page tables
-    fn setup_kernel_page() -> VirtAddr;
+    fn setup_kernel_paging() -> VirtAddr;
 
     /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
     ///
     /// # Safety
     /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
     /// valid, PMM-allocated frame.
-    ///
-    /// # Panics
-    /// Panics if the PMM runs out of frames when allocating an intermediate page table.
     unsafe fn map_page(
         pmm: &mut Pmm,
         page_ptr: VirtAddr,
@@ -32,20 +30,17 @@ pub trait VmmPaging {
         phys: PhysAddr,
         page_type: Self::PageType,
         flags: Self::PageTableFlags
-    );
+    ) -> VmmResult;
 
     /// Unmap one virtual page
     ///
     /// # Safety
     /// The caller must ensure `virt` was previously mapped and that no live code or
     /// data references the page after this call returns.
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
     unsafe fn unmap_page(
         page_ptr: VirtAddr,
         virt: VirtAddr
-    );
+    ) -> VmmResult;
 
     /// Change page table flags of an already mapped page
     ///
@@ -53,14 +48,11 @@ pub trait VmmPaging {
     /// The caller must ensure `virt` was previously mapped and that changing the page's flags
     /// will not violate anything (example: making a page non-writable while a mutable reference
     /// is held to it)
-    ///
-    /// # Panics
-    /// Panics if any level of the walk is not present (page was never mapped).
     unsafe fn remap_page(
         page_ptr: VirtAddr,
         virt: VirtAddr,
         new_flags: Self::PageTableFlags
-    );
+    ) -> VmmResult;
 
     /// Walk the page tables and return the phys address mapped at `virt` or `None` if the
     /// address is not mapped
