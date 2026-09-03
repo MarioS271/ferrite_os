@@ -35,6 +35,13 @@ To keep the project safe and maintainable, please follow these guidelines.
   function/method should be an `unsafe fn`.
 - If a function/method or similar has any code path which panics (via `kernel_panic`/`panic!` or similar that invokes the `#[panic_handler]`),
   this should be documented in the rustdoc in a `# Panics` section.
+- When writing traits, rustdoc should only be present on the trait definition of a method. Do not add rustdoc to the trait
+  implementation, only if that specific implementation differs from the default trait method rustdoc.
+- Thin (inline) wrappers which only call another function do not require their own rustdoc, provided the wrapper is a private
+  function/method, as all public functions/methods from an API, subsystem or similar must be documented such that the
+  generated rustdoc and IDEs will show correct documentation for the full public API. An unsafe thin wrapper is exempt from
+  requiring a `# Safety` section if its safety requirements are identical to those of the function it delegates to, and that
+  function already carries a `# Safety` section or is reachable from a public item that does.
 
 ### 3.2. File Headers
 File headers should look like the following:
