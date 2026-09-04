@@ -1,18 +1,16 @@
-# ─── ferrite_os build environment ──────────────────────────────────────────────
-# Handles: Rust, Limine, ISO creation
-# QEMU runs natively on Windows — not in this container
 FROM debian:bookworm-slim
-
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install deps such as git, make, nasm, xorriso, python and more
 RUN apt-get update && apt-get install -y \
-    curl git make gcc nasm \
+    curl git make nasm \
     xorriso \
     mtools \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
-# ─── Rust nightly ─────────────────────────────────────────────────────────────
+
+# Set up rust
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
@@ -22,9 +20,10 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
     --profile minimal
 
 RUN rustup target add x86_64-unknown-none && \
-    rustup component add rust-src llvm-tools-preview
+    rustup component add rust-src llvm-tools
 
-# ─── Limine ───────────────────────────────────────────────────────────────────
+
+# Clone and build the limine bootloader
 RUN git clone https://github.com/limine-bootloader/limine.git \
         --branch=v8.x-binary --depth=1 /opt/limine && \
     make -C /opt/limine
@@ -32,5 +31,4 @@ RUN git clone https://github.com/limine-bootloader/limine.git \
 ENV LIMINE_PATH=/opt/limine
 
 WORKDIR /ferrite_os
-
 CMD ["bash"]
