@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: GPL-3.0-only
+//!
+//!
+//! Authors: MarioS271
+
+use crate::lib::addr::{PhysAddr, VirtAddr};
+use crate::mm::pmm::Pmm;
+use crate::mm::vmm::vma::VmaFlags;
+use crate::mm::vmm::VmmResult;
+
+pub trait VmmPaging {
+    type PageType;
+    type PageTableFlags;
+
+    /// Initialize the kernel page tables and load them
+    ///
+    /// # Panics
+    /// Panics if the PMM cannot allocate memory for the page tables
+    fn setup_kernel_paging() -> VirtAddr;
+
+    /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
+    ///
+    /// # Safety
+    /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
+    /// valid, PMM-allocated frame.
+    unsafe fn map_page(
+        pmm: &mut Pmm,
+        page_ptr: VirtAddr,
+        virt: VirtAddr,
+        phys: PhysAddr,
+        page_type: Self::PageType,
+        flags: Self::PageTableFlags
+    ) -> VmmResult;
+
+    /// Unmap one virtual page
+    ///
+    /// # Safety
+    /// The caller must ensure `virt` was previously mapped and that no live code or
+    /// data references the page after this call returns.
+    unsafe fn unmap_page(
+        page_ptr: VirtAddr,
+        virt: VirtAddr
+    ) -> VmmResult;
+
+    /// Change page table flags of an already mapped page
+    ///
+    /// # Safety
+    /// The caller must ensure `virt` was previously mapped and that changing the page's flags
+    /// will not violate anything (example: making a page non-writable while a mutable reference
+    /// is held to it)
+    unsafe fn remap_page(
+        page_ptr: VirtAddr,
+        virt: VirtAddr,
+        new_flags: Self::PageTableFlags
+    ) -> VmmResult;
+
+    /// Walk the page tables and return the phys address mapped at `virt` or `None` if the
+    /// address is not mapped
+    fn translate(
+        page_ptr: VirtAddr,
+        virt: VirtAddr
+    ) -> Option<PhysAddr>;
+
+    /// Walk the page tables and return a tuple of the phys address mapped at `virt` and the size of
+    /// the page `virt` is mapped in, or `None` if the address is not mapped
+    fn translate_with_size(
+        page_ptr: VirtAddr,
+        virt: VirtAddr
+    ) -> Option<(PhysAddr, u64)>;
+
+    /// Translate VMA flags to arch-specific page table flags
+    fn vma_flags_to_page_flags(
+        vma_flags: VmaFlags
+    ) -> Self::PageTableFlags;
+
+    /// Clone the kernel page's mappings into a user page
+    ///
+    /// # Safety
+    /// The caller must ensure that `dst` is a valid, mapped page
+    unsafe fn clone_kernel_mappings(
+        dst: VirtAddr
+    );
+}

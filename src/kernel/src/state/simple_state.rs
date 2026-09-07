@@ -1,147 +1,155 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Simple State struct; used in early init and on a kernel panic
+//! Simple State struct; used in early boot and on a kernel panic
 //!
 //! Authors: MarioS271
 
-use crate::logging::serial::Serial;
-use crate::panic::kernel_panic;
-use crate::screen::basic::font::Psf2Font;
-use crate::screen::basic::framebuffer::BasicFramebuffer;
-use crate::types::irq_mutex::IrqMutex;
-use crate::types::panic_codes::PanicCode;
-use core::cell::UnsafeCell;
-use core::mem::MaybeUninit;
+use crate::drivers::gpu::basic_fb::font::Psf2Font;
+use crate::drivers::gpu::basic_fb::framebuffer::BasicFramebuffer;
+use crate::drivers::tty::uart::Uart;
+use crate::lib::panic::kernel_panic;
+use crate::lib::panic_codes::PanicCode;
+use crate::lib::sync::irq_mutex::IrqMutex;
+use crate::lib::sync::unchecked_cell::UncheckedCell;
+use crate::lib::types::boot_info::PanicAction;
 use core::sync::atomic::{AtomicU8, Ordering};
 
-/// Data structure for keeping the serial logger and basic fb resources for early boot and panic
+/// Data structure for keeping the serial UART logger and basic_fb fb resources for early boot and panic
+/// The default initializations should not contain any non-null value in order for [`SIMPLE_STATE`]
+/// to be able to live in `.bss` to reduce binary size
 pub(crate) static SIMPLE_STATE: SimpleKernelState = SimpleKernelState {
     is_init: AtomicU8::new(0),
-    serial: UnsafeCell::new(MaybeUninit::uninit()),
-    basic_fb: UnsafeCell::new(MaybeUninit::uninit()),
-    basic_fb_psf2_font: UnsafeCell::new(MaybeUninit::uninit()),
+    uart: UncheckedCell::new(),
+    basic_fb: UncheckedCell::new(),
+    basic_fb_psf2_font: UncheckedCell::new(),
+    panic_action: AtomicU8::new(0)
 };
 
+#[repr(align(64))]
 pub struct SimpleKernelState {
     is_init: AtomicU8,
-    serial: UnsafeCell<MaybeUninit<IrqMutex<Serial>>>,
-    basic_fb: UnsafeCell<MaybeUninit<IrqMutex<BasicFramebuffer>>>,
-    basic_fb_psf2_font: UnsafeCell<MaybeUninit<Psf2Font>>,
+    uart: UncheckedCell<IrqMutex<Uart>>,
+    basic_fb: UncheckedCell<IrqMutex<BasicFramebuffer>>,
+    basic_fb_psf2_font: UncheckedCell<Psf2Font>,
+    panic_action: AtomicU8
 }
 
-/// Safety:
-/// - `is_init` is an [`AtomicU8`] and is already [`Sync`]
-/// - `serial`, `basic_fb´ and `basic_fb_psf2_font` are written to exactly once before SMP/threading.
-///   After those `init_*` calls, no mutable references/pointers will ever be created again
-unsafe impl Sync for SimpleKernelState {}
-
 impl SimpleKernelState {
-    /// Move the given [`Serial`] into `SIMPLE_STATE::serial`
+    const IS_UART_INIT: u8 = 1 << 0;
+    const IS_BASIC_FB_INIT: u8 = 1 << 1;
+    const IS_BASIC_FB_FONT_INIT: u8 = 1 << 2;
+
+    /// Move the given [`Uart`] into `SIMPLE_STATE::uart`
     ///
     /// # Safety
-    /// The caller must guarantee that this never runs in a concurrent context (SMP, threading)
-    /// and is called exactly once
-    pub unsafe fn init_serial(&self, serial: Serial) {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsSerialInit as u8 != 0 {
-            core::hint::cold_path();
-            return;
+    /// The caller must guarantee the following:
+    /// - That this method has never been called before and will never be called again
+    /// - That at the time of calling this method, no references or pointers to this data exist
+    /// - While this method is being called, no other CPU is working with the given data
+    pub unsafe fn init_uart(&self, uart: Uart) {
+        if self.is_init.load(Ordering::Acquire) & Self::IS_UART_INIT != 0 {
+            kernel_panic(
+                PanicCode::DoubleInitialization,
+                "Attempted to double-initialize SIMPLE_STATE.uart"
+            );
         }
 
-        unsafe { (*self.serial.get()).write(IrqMutex::new(serial)); }
-        self.is_init.fetch_or(SimpleStateInit::IsSerialInit as u8, Ordering::AcqRel);
+        unsafe { self.uart.init(IrqMutex::new(uart)) };
+        self.is_init.fetch_or(Self::IS_UART_INIT, Ordering::Release);
     }
 
     /// Move the given [`BasicFramebuffer`] into `SIMPLE_STATE::basic_fb`
     ///
     /// # Safety
-    /// The caller must guarantee that this never runs in a concurrent context (SMP, threading)
-    /// and is called exactly once
+    /// The caller must guarantee the following:
+    /// - That this method has never been called before and will never be called again
+    /// - That at the time of calling this method, no references or pointers to this data exist
+    /// - While this method is being called, no other CPU is working with the given data
     pub unsafe fn init_basic_fb(&self, basic_fb: BasicFramebuffer) {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbInit as u8 != 0 {
-            core::hint::cold_path();
-            return;
+        if self.is_init.load(Ordering::Acquire) & Self::IS_BASIC_FB_INIT != 0 {
+            kernel_panic(
+                PanicCode::DoubleInitialization,
+                "Attempted to double-initialize SIMPLE_STATE.basic_fb"
+            );
         }
 
-        unsafe { (*self.basic_fb.get()).write(IrqMutex::new(basic_fb)); }
-        self.is_init.fetch_or(SimpleStateInit::IsBasicFbInit as u8, Ordering::AcqRel);
+        unsafe { self.basic_fb.init(IrqMutex::new(basic_fb)) };
+        self.is_init.fetch_or(Self::IS_BASIC_FB_INIT, Ordering::Release);
     }
 
     /// Move the given [`Psf2Font`] into `SIMPLE_STATE::basic_fb_psf2_font`
     ///
     /// # Safety
-    /// The caller must guarantee that this never runs in a concurrent context (SMP, threading)
-    /// and is called exactly once
+    /// The caller must guarantee the following:
+    /// - That this method has never been called before and will never be called again
+    /// - That at the time of calling this method, no references or pointers to this data exist
+    /// - While this method is being called, no other CPU is working with the given data
     pub unsafe fn init_basic_fb_psf2_font(&self, basic_fb_psf2_font: Psf2Font) {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbFontInit as u8 != 0 {
-            core::hint::cold_path();
-            return;
-        }
-
-        unsafe { (*self.basic_fb_psf2_font.get()).write(basic_fb_psf2_font); }
-        self.is_init.fetch_or(SimpleStateInit::IsBasicFbFontInit as u8, Ordering::AcqRel);
-    }
-
-    /// Getter for `SIMPLE_STATE::serial`
-    pub fn serial(&self) -> &IrqMutex<Serial> {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsSerialInit as u8 == 0 {
+        if self.is_init.load(Ordering::Acquire) & Self::IS_BASIC_FB_FONT_INIT != 0 {
             kernel_panic(
-                PanicCode::UninitializedAccess,
-                "Cannot access SIMPLE_STATE::serial before it is initialized"
+                PanicCode::DoubleInitialization,
+                "Attempted to double-initialize SIMPLE_STATE.basic_fb_psf2_font"
             );
         }
 
-        // Safety: assume_init_ref is safe because the is_init check guarantees serial to be initialized
-        unsafe { (*self.serial.get()).assume_init_ref() }
+        unsafe { self.basic_fb_psf2_font.init(basic_fb_psf2_font) };
+        self.is_init.fetch_or(Self::IS_BASIC_FB_FONT_INIT, Ordering::Release);
+    }
+
+    /// Move the given [`PanicAction`] into `SIMPLE_STATE::panic_action`
+    pub fn set_panic_action(&self, panic_action: PanicAction) {
+        self.panic_action.store(panic_action as u8, Ordering::Release);
+    }
+
+    /// Getter for `SIMPLE_STATE::uart`
+    ///
+    /// # Safety
+    /// The caller must guarantee the following:
+    /// - That this value's `init` method has already been called before
+    /// - That at this method's entire execution time, no mutable references or pointers to this data
+    ///   exist or will exist
+    pub unsafe fn uart(&self) -> &IrqMutex<Uart> {
+        unsafe { self.uart.get() }
     }
 
     /// Getter for `SIMPLE_STATE::basic_fb`
-    pub fn basic_fb(&self) -> &IrqMutex<BasicFramebuffer> {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbInit as u8 == 0 {
-            kernel_panic(
-                PanicCode::UninitializedAccess,
-                "Cannot access SIMPLE_STATE::basic_fb before it is initialized"
-            );
-        }
-
-        // Safety: assume_init_ref is safe because the is_init check guarantees basic_fb to be initialized
-        unsafe { (*self.basic_fb.get()).assume_init_ref() }
+    ///
+    /// # Safety
+    /// The caller must guarantee the following:
+    /// - That this value's `init` method has already been called before
+    /// - That at this method's entire execution time, no mutable references or pointers to this data
+    ///   exist or will exist
+    pub unsafe fn basic_fb(&self) -> &IrqMutex<BasicFramebuffer> {
+        unsafe { self.basic_fb.get() }
     }
 
     /// Getter for `SIMPLE_STATE::basic_fb_psf2_font`
-    pub fn basic_fb_psf2_font(&self) -> &Psf2Font {
-        if self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbFontInit as u8 == 0 {
-            kernel_panic(
-                PanicCode::UninitializedAccess,
-                "Cannot access SIMPLE_STATE::basic_fb_psf2_font before it is initialized"
-            );
-        }
-
-        // Safety: assume_init_ref is safe because the is_init check guarantees basic_fb_psf2_font to be initialized
-        unsafe { (*self.basic_fb_psf2_font.get()).assume_init_ref() }
+    ///
+    /// # Safety
+    /// The caller must guarantee the following:
+    /// - That this value's `init` method has already been called before
+    /// - That at this method's entire execution time, no mutable references or pointers to this data
+    ///   exist or will exist
+    pub unsafe fn basic_fb_psf2_font(&self) -> &Psf2Font {
+        unsafe { self.basic_fb_psf2_font.get() }
     }
 
-    /// Check whether `SIMPLE_STATE::serial` is initialized
-    #[inline]
-    pub fn is_serial_initialized(&self) -> bool {
-        self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsSerialInit as u8 != 0
+    /// Getter for `SIMPLE_STATE::panic_action`
+    pub fn panic_action(&self) -> PanicAction {
+        PanicAction::from_u8(self.panic_action.load(Ordering::Acquire)).unwrap_or(crate::config::DEFAULT_PANIC_ACTION)
+    }
+
+    /// Check whether `SIMPLE_STATE::uart` is initialized
+    pub fn is_uart_initialized(&self) -> bool {
+        self.is_init.load(Ordering::Acquire) & Self::IS_UART_INIT != 0
     }
 
     /// Check whether `SIMPLE_STATE::basic_fb` is initialized
-    #[inline]
     pub fn is_basic_fb_initialized(&self) -> bool {
-        self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbInit as u8 != 0
+        self.is_init.load(Ordering::Acquire) & Self::IS_BASIC_FB_INIT != 0
     }
 
     /// Check whether `SIMPLE_STATE::basic_fb_psf2_font` is initialized
-    #[inline]
     pub fn is_basic_fb_psf2_font_initialized(&self) -> bool {
-        self.is_init.load(Ordering::Acquire) & SimpleStateInit::IsBasicFbFontInit as u8 != 0
+        self.is_init.load(Ordering::Acquire) & Self::IS_BASIC_FB_FONT_INIT != 0
     }
-}
-
-/// Enum helper to not have to write the raw bitshifts on every is_init check
-#[repr(u8)]
-enum SimpleStateInit {
-    IsSerialInit = 1 << 0,
-    IsBasicFbInit = 1 << 1,
-    IsBasicFbFontInit = 1 << 2
 }

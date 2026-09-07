@@ -6,8 +6,11 @@
 use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 
-#[cfg(feature = "debug-checks")]
-use core::sync::atomic::AtomicBool;
+#[cfg(feature = "debug-checks")] use crate::lib::panic::kernel_panic;
+#[cfg(feature = "debug-checks")] use crate::lib::panic_codes::PanicCode;
+#[cfg(feature = "debug-checks")] use core::sync::atomic::AtomicBool;
+#[cfg(feature = "debug-checks")] use core::sync::atomic::Ordering;
+
 
 /// A datatype with interior mutability, which can be uninitialized via [`MaybeUninit`]
 /// When the cargo feature `debug-checks` is enabled, this type also checks for double initialization
@@ -41,10 +44,6 @@ impl<T> UncheckedCell<T> {
     pub unsafe fn init(&self, value: T) {
         #[cfg(feature = "debug-checks")]
         {
-            use core::sync::atomic::Ordering;
-            use crate::lib::panic::kernel_panic;
-            use crate::lib::panic_codes::PanicCode;
-
             if self.is_init.load(Ordering::Relaxed) {
                 kernel_panic(
                     PanicCode::DoubleInitialization,
@@ -69,10 +68,6 @@ impl<T> UncheckedCell<T> {
     pub unsafe fn get(&self) -> &T {
         #[cfg(feature = "debug-checks")]
         {
-            use core::sync::atomic::Ordering;
-            use crate::lib::panic::kernel_panic;
-            use crate::lib::panic_codes::PanicCode;
-
             if !self.is_init.load(Ordering::Relaxed) {
                 kernel_panic(
                     PanicCode::UninitializedAccess,

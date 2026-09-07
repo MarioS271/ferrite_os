@@ -4,8 +4,10 @@
 //!
 //! Authors: MarioS271
 
-use pic8259;
-use crate::types::irq_mutex::IrqMutex;
+// TODO: APIC
+
+use crate::lib::sync::irq_mutex::IrqMutex;
+use pic8259::ChainedPics;
 
 /// I/O port for sending commands (including ISR read) to the master PIC.
 pub const PIC_MASTER_CMD_PORT: u16 = 0x20;
@@ -17,14 +19,16 @@ pub const PIC_MASTER_OFFSET: u8 = 0x20;
 pub const PIC_SLAVE_OFFSET: u8 = 0x28;
 
 /// The chained master+slave PIC pair, lockable from IRQ handlers.
-static CHAINED_PICS: IrqMutex<pic8259::ChainedPics> = IrqMutex::new(unsafe { pic8259::ChainedPics::new(PIC_MASTER_OFFSET, PIC_SLAVE_OFFSET) });
+static CHAINED_PICS: IrqMutex<ChainedPics> = IrqMutex::new(
+    unsafe { ChainedPics::new(PIC_MASTER_OFFSET, PIC_SLAVE_OFFSET) }
+);
 
 /// Initialize and remap the PIC, then enable only IRQ0 (PIT timer).
 pub fn init() {
     let mut _lock = CHAINED_PICS.lock();
     unsafe {
         _lock.initialize();
-        _lock.write_masks(0xFE, 0xFF);
+        _lock.write_masks(0xFF, 0xFF);
     }
 }
 

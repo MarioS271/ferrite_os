@@ -29,6 +29,14 @@ pub struct NicheCell<T>(
 unsafe impl<T: Send + Sync> Sync for NicheCell<T> {}
 
 impl<T> NicheCell<T> {
+    /// Constructor; creates a new [`NicheCell`] containing [`None`]
+    #[allow(clippy::new_without_default)]
+    pub const fn new() -> Self {
+        Self(
+            UnsafeCell::new(None)
+        )
+    }
+
     /// Set the inner value
     ///
     /// # Safety
@@ -60,14 +68,5 @@ impl<T> NicheCell<T> {
     /// no mutable references or pointers to this data exist or will exist
     pub unsafe fn get(&self) -> &Option<T> {
         unsafe { &*self.0.get() }
-    }
-}
-
-impl<T> Default for NicheCell<T> {
-    /// Constructor; creates a new [`NicheCell`] containing [`None`]
-    fn default() -> Self {
-        Self(
-            UnsafeCell::new(None)
-        )
     }
 }

@@ -4,49 +4,39 @@
 //!
 //! Authors: MarioS271
 
-use super::subsystems::dev::Devs;
-use super::subsystems::vdev::VDevs;
-use super::subsystems::sys::Sys;
-use super::subsystems::mnt::Mounts;
-use super::subsystems::net::Net;
-use super::subsystems::ipc::Ipc;
-use super::subsystems::sched::Sched;
-use super::subsystems::mm::Mm;
-use super::subsystems::irq::Irq;
-use super::subsystems::time::Time;
-use super::subsystems::cpu::cpu::Cpu;
-use super::subsystems::fs::Fs;
-use super::subsystems::procs::Procs;
+use crate::cpu::state::Cpu;
+use crate::kprint::state::KPrint;
+use crate::mm::state::Mm;
+use crate::sched::state::sched::Sched;
+use crate::vfs::state::Vfs;
 
 pub static KSTATE: KState = KState {
-    devs: Devs {},
-    vdevs: VDevs {},
-    sys: Sys {},
-    mnt: Mounts {},
-    net: Net {},
-    ipc: Ipc {},
-    sched: Sched {},
-    mm: Mm::new(),
-    irq: Irq {},
-    time: Time {},
     cpu: Cpu::new(),
-    fs: Fs {},
-    procs: Procs::new(),
+    kprint: KPrint::new(),
+    mm: Mm::new(),
+    sched: Sched::new(),
+    vfs: Vfs::new()
 };
 
 /// The central kernel state aggregate; one field per OS subsystem domain.
 pub struct KState {
-    pub devs: Devs,
-    pub vdevs: VDevs,
-    pub sys: Sys,
-    pub mnt: Mounts,
-    pub net: Net,
-    pub ipc: Ipc,
-    pub sched: Sched,
-    pub mm: Mm,
-    pub irq: Irq,
-    pub time: Time,
     pub cpu: Cpu,
-    pub fs: Fs,
-    pub procs: Procs,
+    pub kprint: KPrint,
+    pub mm: Mm,
+    pub sched: Sched,
+    pub vfs: Vfs
+}
+
+impl KState {
+    /// Calls the `init` method of all subsystems which have one
+    ///
+    /// > This method should be the very first call the kernel makes, as without it,
+    /// a lot of [`KSTATE`] will be in an incorrect state for the boot process
+    ///
+    /// Use this to initialize any non-zero default values; those aren't initialized in
+    /// the const fn new, as that would increase the binary size by the size of the entire KSTATE
+    /// struct, which we don't want
+    pub fn init(&self) {
+        self.kprint.init();
+    }
 }

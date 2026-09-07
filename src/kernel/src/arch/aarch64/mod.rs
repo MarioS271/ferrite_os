@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! aarch64 architecture support — not yet implemented.
+//! ARM64 (aarch64) specific code
 //!
 //! Authors: MarioS271
 

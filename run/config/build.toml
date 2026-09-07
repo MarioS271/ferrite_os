@@ -2,6 +2,7 @@
 profile = "debug"
 
 [features]
+debug-checks = true
 debug-logging = true
 vmm-debug-logging = false
 

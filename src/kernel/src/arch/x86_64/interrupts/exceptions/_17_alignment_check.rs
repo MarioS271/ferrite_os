@@ -3,11 +3,11 @@
 //!
 //! Authors: MarioS271
 
+use crate::lib::panic_codes::PanicCode;
+use crate::lib::types::fmt_buffer::FmtBuffer;
+use crate::lib::panic::kernel_panic;
 use core::fmt::Write;
 use x86_64::structures::idt::InterruptStackFrame;
-use crate::types::fmt_buffer::FmtBuffer;
-use crate::panic::kernel_panic;
-use crate::types::panic_codes::PanicCode;
 
 /// Panic with the error code (always 0) and interrupt stack frame.
 pub extern "x86-interrupt" fn handler(

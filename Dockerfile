@@ -20,7 +20,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
     --profile minimal
 
 RUN rustup target add x86_64-unknown-none && \
-    rustup component add rust-src llvm-tools
+    rustup component add rust-src llvm-tools clippy
 
 
 # Clone and build the limine bootloader

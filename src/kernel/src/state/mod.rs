@@ -4,5 +4,4 @@
 //! Authors: MarioS271
 
 pub(crate) mod kstate;
-pub(crate) mod subsystems;
 pub(crate) mod simple_state;

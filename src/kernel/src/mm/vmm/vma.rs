@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: GPL-3.0-only
+//! Type that represents virtual memory areas which are used to mark certain memory read, write, user or execute
+//!
+//! Authors: MarioS271
+
+use crate::lib::addr::VirtAddr;
+use crate::lib::macros::bitflags::bitflags;
+use core::borrow::Borrow;
+use core::cmp::Ordering;
+
+/// A type representing virtual memory areas
+/// > **Important**: `end_addr` is exclusive
+pub struct Vma {
+    pub start_addr: VirtAddr,
+    pub end_addr: VirtAddr,
+    pub flags: VmaFlags
+}
+
+impl Vma {
+    /// Checks whether the VMA contains/manages a specific address
+    pub fn contains(&self, addr: VirtAddr) -> bool {
+        if addr >= self.start_addr && addr < self.end_addr {
+            return true;
+        }
+        false
+    }
+
+    /// Returns the size of memory that is managed by this VMA
+    pub fn size(&self) -> u64 {
+        self.end_addr.as_u64() - self.start_addr.as_u64()
+    }
+
+    /// Check whether two VMAs overlap
+    pub fn overlaps(&self, other: &Vma) -> bool {
+        if (self.end_addr <= other.start_addr) || (other.end_addr <= self.start_addr) {
+            return false;
+        }
+        true
+    }
+}
+
+impl Borrow<VirtAddr> for Vma {
+    /// Returns a reference to [`Vma::start_addr`] to make it possible for [`BTreeSet`] to
+    /// compare it with a [`VirtAddr`] directly
+    fn borrow(&self) -> &VirtAddr {
+        &self.start_addr
+    }
+}
+impl PartialEq<Self> for Vma {
+    /// Only checks equality for [`Vma::start_addr`] and no other property
+    fn eq(&self, other: &Self) -> bool {
+        self.start_addr.eq(&other.start_addr)
+    }
+}
+impl Eq for Vma {}
+impl Ord for Vma {
+    /// Compares only [`Vma::start_addr`] and no other property
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.start_addr.cmp(&other.start_addr)
+    }
+}
+impl PartialOrd for Vma {
+    /// Delegates to [`Vma::cmp`]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+bitflags!(
+    /// Flags to describe the properties of a VMA
+    VmaFlags, u8
+);
+impl VmaFlags {
+    pub const READ: Self = Self(1 << 0);
+    pub const WRITE: Self = Self(1 << 1);
+    pub const EXEC: Self = Self(1 << 2);
+    pub const USER: Self = Self(1 << 3);
+}

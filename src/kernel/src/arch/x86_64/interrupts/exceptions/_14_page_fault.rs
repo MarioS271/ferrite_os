@@ -3,15 +3,15 @@
 //!
 //! Authors: MarioS271
 
-use crate::mem::pmm::FRAME_SIZE;
-use crate::mem::vmm::traits::VmmPaging;
-use crate::mem::vmm::Vmm;
-use crate::mem::x86_64::vmm::page_type::PageType;
-use crate::panic::kernel_panic;
+use crate::arch::x86_64::mm::vmm::page_type::PageType;
+use crate::lib::addr::VirtAddr;
+use crate::lib::panic::kernel_panic;
+use crate::lib::panic_codes::PanicCode;
+use crate::lib::types::fmt_buffer::FmtBuffer;
+use crate::mm::pmm::FRAME_SIZE;
+use crate::mm::vmm::traits::VmmPaging;
+use crate::mm::vmm::Vmm;
 use crate::state::kstate::KSTATE;
-use crate::types::addr::VirtAddr;
-use crate::types::fmt_buffer::FmtBuffer;
-use crate::types::panic_codes::PanicCode;
 use core::fmt::Write;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
@@ -31,13 +31,13 @@ pub extern "x86-interrupt" fn handler(
 }
 
 /// Handle a kernel page fault; maps a new page if VMA is found, otherwise panics
-#[inline]
+#[inline(always)]
 fn handle_kernel_pf(
     isf: InterruptStackFrame,
     error_code: PageFaultErrorCode,
     faulting_virt: VirtAddr
 ) {
-    // Safety: interrupts only get enabled after full mm kernel init, which guarantees that
+    // Safety: interrupts only get enabled after full mm kernel boot, which guarantees that
     // kernel_addr_space is already initialized
     let addr_space = unsafe { KSTATE.mm.kernel_addr_space().lock() };
     let vma = addr_space.find_vma(faulting_virt).unwrap_or_else(
@@ -51,7 +51,7 @@ fn handle_kernel_pf(
     let page_ptr = addr_space.page_ptr();
     drop(addr_space);
 
-    // Safety: interrupts only get enabled after full mm kernel init, which guarantees that
+    // Safety: interrupts only get enabled after full mm kernel boot, which guarantees that
     // pmm is already initialized
     let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
     let frame = pmm.alloc_frame().unwrap_or_else(
@@ -80,14 +80,15 @@ fn handle_kernel_pf(
     }
 }
 
-#[inline]
+#[inline(always)]
 fn handle_user_pf(
     faulting_virt: VirtAddr
 ) {
     todo!();
 }
 
-#[inline]
+
+#[inline(always)]
 fn kernel_pf_panic(
     panic_message: &str,
     isf: &InterruptStackFrame,

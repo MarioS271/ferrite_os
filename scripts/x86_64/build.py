@@ -86,7 +86,7 @@ def options_error(reason: str):
     print("    profile = \"debug\"    # \"debug\" or \"release\"")
     print("")
     print("    [features]")
-    print("    debug-logging = true  # set false to omit the --features flag")
+    print("    debug-kprint = true  # set false to omit the --features flag")
     sys.exit(1)
 
 def load_options(cfg: dict) -> str:
@@ -355,6 +355,10 @@ def run_qemu():
         "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
         "-drive",     f"if=pflash,format=raw,readonly=on,file={qemu_file(OVMF_CODE)}",
         "-drive",     f"if=pflash,format=raw,file={qemu_file(OVMF_VARS)}",
+        "-d", "int,cpu_reset",
+        "-no-reboot",
+        "-no-shutdown",
+        "-D", "qemu.log",
     ]
     print(f"  >> {' '.join(str(c) for c in cmd)}")
     qemu = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -408,7 +412,7 @@ def _save_terminal() -> tuple:
 
 def _restore_terminal(saved_stty: str | None, saved_size):
     """
-    Restore terminal size and mode, then wipe the screen including scrollback.
+    Restore terminal size and mode, then wipe the gpu including scrollback.
     """
     # Restore window size via xterm CSI sequence (harmless if unsupported)
     if saved_size:
@@ -422,7 +426,7 @@ def _restore_terminal(saved_stty: str | None, saved_size):
         "\033[?7h"  # DECAWM  – re-enable auto-wrap
     )
 
-    # Clear visible screen + scrollback buffer so no broken serial output remains
+    # Clear visible gpu + scrollback buffer so no broken serial output remains
     sys.stdout.write(
         "\033[H"    # cursor to row 1, col 1
         "\033[2J"   # erase visible screen
@@ -468,35 +472,15 @@ def stream_serial(qemu_proc):
     banner(f"Serial Output  [{HOST}:{TCP_SERIAL_PORT}]")
     try:
         with sock:
-            buf     = b""
-            started = False
             while True:
                 data = sock.recv(4096)
                 if not data:
                     break
 
-                if not started:
-                    # Buffer until the kernel's first log line appears;
-                    # everything before it is UEFI/firmware noise.
-                    buf += data
-                    idx = buf.find(SERIAL_START_MARKER)
-                    if idx != -1:
-                        started = True
-                        out = buf[idx:]      # drop all pre-marker bytes
-                        sys.stdout.buffer.write(out)
-                        sys.stdout.buffer.flush()
-                        log_file.write(out)
-                        log_file.flush()
-                        buf = b""            # free the pre-marker buffer
-                    elif len(buf) > 65536:
-                        # Don't grow unboundedly — keep a tail in case the
-                        # marker is split across two recv() calls
-                        buf = buf[-len(SERIAL_START_MARKER):]
-                else:
-                    sys.stdout.buffer.write(data)
-                    sys.stdout.buffer.flush()
-                    log_file.write(data)
-                    log_file.flush()
+                sys.stdout.buffer.write(data)
+                sys.stdout.buffer.flush()
+                log_file.write(data)
+                log_file.flush()
     except (KeyboardInterrupt, ConnectionResetError):
         pass
     finally:

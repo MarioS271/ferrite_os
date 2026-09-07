@@ -1,10 +1,11 @@
 [package]
-name    = "kernel"
-version = "0.1.0"
+name = "kernel"
+version = "1.0.0"
 edition = "2024"
 license = "GPL-3.0-only"
 
 [features]
+debug-checks = []
 debug-logging = []
 vmm-debug-logging = []
 
@@ -14,7 +15,6 @@ path = "src/main.rs"
 test = false
 
 [dependencies]
-spin = "0.12.0"
 x86_64 = "0.15.5"
 limine = "0.6.3"
 linked_list_allocator = "0.10.6"
