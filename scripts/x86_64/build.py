@@ -355,10 +355,6 @@ def run_qemu():
         "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
         "-drive",     f"if=pflash,format=raw,readonly=on,file={qemu_file(OVMF_CODE)}",
         "-drive",     f"if=pflash,format=raw,file={qemu_file(OVMF_VARS)}",
-        "-d", "int,cpu_reset",
-        "-no-reboot",
-        "-no-shutdown",
-        "-D", "qemu.log",
     ]
     print(f"  >> {' '.join(str(c) for c in cmd)}")
     qemu = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
