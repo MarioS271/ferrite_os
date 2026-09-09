@@ -78,8 +78,7 @@ impl LogLevel {
             Warn => b'W',
             Notice => b'N',
             Info => b'I',
-            Debug => b'D',
-            _ => unreachable!()
+            Debug => b'D'
         }
     }
 
@@ -94,8 +93,7 @@ impl LogLevel {
             Warn => 0x00ffff00,
             Notice => 0x0000ffaa,
             Info => 0x0000ff00,
-            Debug => 0x000000ff,
-            _ => unreachable!()
+            Debug => 0x000000ff
         }
     }
 }
