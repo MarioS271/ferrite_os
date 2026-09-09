@@ -3,7 +3,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install deps such as git, make, nasm, xorriso, python and more
 RUN apt-get update && apt-get install -y \
-    curl git make nasm \
+    curl git make gcc nasm \
     xorriso \
     mtools \
     python3 \
