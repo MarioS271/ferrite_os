@@ -16,7 +16,7 @@ pub extern "x86-interrupt" fn handler(
     let mut fmt_buffer = FmtBuffer::<512>::new();
     let _ = write!(&mut fmt_buffer, "{:#?}\n", isf);
     kernel_panic(
-        PanicCode::NmiHardwareFailiure,
+        PanicCode::NmiHardwareFailure,
         fmt_buffer.as_str(),
     );
 }
