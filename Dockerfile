@@ -25,7 +25,7 @@ RUN rustup target add x86_64-unknown-none && \
 
 # Clone and build the limine bootloader
 RUN git clone https://github.com/limine-bootloader/limine.git \
-        --branch=v8.x-binary --depth=1 /opt/limine && \
+        --branch=v9.x-binary --depth=1 /opt/limine && \
     make -C /opt/limine
 
 ENV LIMINE_PATH=/opt/limine
