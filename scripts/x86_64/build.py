@@ -350,7 +350,7 @@ def run_qemu():
     cmd = [
         "qemu-system-x86_64",
         "-cdrom",     str(ISO),
-        "-m",         "1G",
+        "-m",         "4G",
         "-vga",       "std",
         "-serial",    f"tcp::{TCP_SERIAL_PORT},server,nowait",
         "-drive",     f"if=pflash,format=raw,readonly=on,file={qemu_file(OVMF_CODE)}",
