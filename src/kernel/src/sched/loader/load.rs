@@ -13,8 +13,6 @@ use crate::mm::vmm::Vmm;
 use crate::sched::loader::defs::phdrs::ElfPhdr;
 use crate::state::kstate::KSTATE;
 
-const USER_STACK_VIRT: VirtAddr = VirtAddr::new(0x0000_7fff_ffff_0000);
-
 /// Map VMAs and pages according to the ELF phdrs and copy the ELF binary into the
 /// freshly mapped memory
 pub fn map_phdrs_and_copy_elf(addr_space: &mut AddressSpace, phdrs: &[ElfPhdr], elf: &[u8]) {
@@ -92,7 +90,7 @@ unsafe fn copy_segment_data(addr_space: &AddressSpace, phdr: &ElfPhdr, elf: &[u8
 /// Set up a stack for the user process
 pub fn setup_user_stack(addr_space: &mut AddressSpace) -> VirtAddr {
     let stack_size = FRAME_SIZE * 4;    // TODO: dynamically do this
-    let stack_top = USER_STACK_VIRT;
+    let stack_top = crate::mm::layout::USER_STACK_TOP;
     let stack_bottom = stack_top - stack_size;
 
     // Safety: the PMM was already initialized in stage 2

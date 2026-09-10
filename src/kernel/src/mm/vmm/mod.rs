@@ -7,5 +7,6 @@ mod vmm;
 pub(crate) use vmm::*;
 
 pub(crate) mod traits;
-pub(crate) mod address_space;
 pub(crate) mod vma;
+pub(crate) mod address_space;
+pub(crate) mod boot_mapping;

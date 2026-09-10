@@ -3,16 +3,16 @@
 //!
 //! Authors: MarioS271
 
-use crate::lib::addr::{PhysAddr, VirtAddr};
+use crate::lib::addr::VirtAddr;
 use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
-use crate::lib::types::boot_info::KernelSectionInfo;
+use crate::mm::pmm::FRAME_SIZE;
+use crate::mm::vmm::boot_mapping::BootMappings;
 use crate::mm::vmm::traits::VmmPaging;
-use crate::mm::vmm::vma::{Vma, VmaFlags};
+use crate::mm::vmm::vma::Vma;
 use crate::mm::vmm::{Vmm, VmmError, VmmResult};
 use crate::state::kstate::KSTATE;
 use alloc::collections::BTreeSet;
-use crate::mm::pmm::FRAME_SIZE;
 
 /// Type to represent the memory of a process or the kernel by holding a pointer to its page tables and VMAs
 pub struct AddressSpace {
@@ -64,42 +64,18 @@ impl AddressSpace {
 
     /// Initializes Kernel VMAs on self
     /// Do not call this ever, unless you are initializing the kernel's address space
-    pub fn setup_kernel_vmas(&mut self, section_info: &KernelSectionInfo) {
-        // HHDM
-        let _ = self.insert_vma(
-            Vma {
-                start_addr: VirtAddr::new(KSTATE.mm.hhdm_offset()),
-                end_addr: VirtAddr::from_phys(PhysAddr::new(
-                    // Safety: the PMM gets initialized before any address space does
-                    unsafe { KSTATE.mm.pmm().lock().get_total_mem() }
-                )),
-                flags: VmaFlags::READ | VmaFlags::WRITE
-            }
-        );
-        // Kernel .text
-        let _ = self.insert_vma(
-            Vma {
-                start_addr: VirtAddr::new(section_info.kernel_start),
-                end_addr: VirtAddr::new(section_info.kernel_text_end),
-                flags: VmaFlags::READ | VmaFlags::EXEC
-            }
-        );
-        // Kernel .rodata
-        let _ = self.insert_vma(
-            Vma {
-                start_addr: VirtAddr::new(section_info.kernel_text_end),
-                end_addr: VirtAddr::new(section_info.kernel_rodata_end),
-                flags: VmaFlags::READ
-            }
-        );
-        // Kernel .data and .bss
-        let _ = self.insert_vma(
-            Vma {
-                start_addr: VirtAddr::new(section_info.kernel_rodata_end),
-                end_addr: VirtAddr::new(section_info.kernel_end),
-                flags: VmaFlags::READ | VmaFlags::WRITE
-            }
-        );
+    pub fn setup_kernel_vmas(&mut self, boot_mappings: &BootMappings) -> VmmResult {
+        for mapping in boot_mappings {
+            self.insert_vma(
+                Vma {
+                    start_addr: mapping.virt,
+                    end_addr: mapping.virt + mapping.size,
+                    flags: mapping.flags,
+                }
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Add a VMA to the `AddressSpace`
@@ -123,5 +99,32 @@ impl AddressSpace {
     /// Returns a reference to the VMA wrapped in an option incase it is not found
     pub fn find_vma(&self, addr: VirtAddr) -> Option<&Vma> {
         self.vmas.range(..=addr).next_back().filter(|vma| vma.contains(addr))
+    }
+
+    /// Search for a VMA-free range of `size` bytes in `[from, to)`
+    /// Returns the lowest address where such a range fits, or [`None`] if such a
+    /// range couldn't be found between VMAs
+    pub fn find_free_range(&self, from: VirtAddr, to: VirtAddr, size: u64) -> Option<VirtAddr> {
+        let mut candidate = from;
+
+        for vma in self.vmas.range(from..) {
+            if vma.start_addr >= to {
+                break;
+            }
+
+            if vma.start_addr.as_u64() - candidate.as_u64() >= size {
+                return Some(candidate);
+            }
+
+            if vma.end_addr > candidate {
+                candidate = vma.end_addr;
+            }
+        }
+
+        if to.as_u64() - candidate.as_u64() >= size {
+            Some(candidate)
+        } else {
+            None
+        }
     }
 }

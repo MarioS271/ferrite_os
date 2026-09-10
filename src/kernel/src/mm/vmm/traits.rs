@@ -4,7 +4,9 @@
 //! Authors: MarioS271
 
 use crate::lib::addr::{PhysAddr, VirtAddr};
+use crate::lib::types::boot_info::KernelSectionInfo;
 use crate::mm::pmm::Pmm;
+use crate::mm::vmm::boot_mapping::BootMappings;
 use crate::mm::vmm::vma::VmaFlags;
 use crate::mm::vmm::VmmResult;
 
@@ -16,9 +18,9 @@ pub trait VmmPaging {
     ///
     /// # Panics
     /// Panics if the PMM cannot allocate memory for the page tables
-    fn setup_kernel_paging() -> VirtAddr;
+    fn setup_kernel_paging(sections: &KernelSectionInfo) -> (VirtAddr, BootMappings);
 
-    /// Map one 4 KiB virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
+    /// Map one virtual page to a physical frame. `PRESENT` is forced on regardless of `flags`.
     ///
     /// # Safety
     /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
@@ -30,6 +32,21 @@ pub trait VmmPaging {
         phys: PhysAddr,
         page_type: Self::PageType,
         flags: Self::PageTableFlags
+    ) -> VmmResult;
+
+    /// Map a certain block of physical memory to virtual pages calculated by the method
+    ///
+    /// # Safety
+    /// The caller must ensure `virt` is a valid kernel virtual address and `phys` is a
+    /// valid, PMM-allocated frame.
+    unsafe fn map_range(
+        pmm: &mut Pmm,
+        page_ptr: VirtAddr,
+        virt: VirtAddr,
+        phys: PhysAddr,
+        size: u64,
+        flags: Self::PageTableFlags,
+        can_overmap: bool
     ) -> VmmResult;
 
     /// Unmap one virtual page

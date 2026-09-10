@@ -10,20 +10,23 @@ use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::boot_info::KernelSectionInfo;
 use crate::mm::pmm::FRAME_SIZE;
 use crate::mm::vmm::address_space::AddressSpace;
+use crate::mm::vmm::boot_mapping::BootMappings;
 use crate::mm::vmm::traits::VmmPaging;
 use crate::mm::vmm::Vmm;
 use crate::state::kstate::KSTATE;
 use crate::{kdebug, mm};
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
+use crate::lib::types::fmt_buffer::FmtBuffer;
 
 pub fn mm_init(section_info: &KernelSectionInfo) {
     let kernel_page: VirtAddr;
+    let boot_mappings: BootMappings;
     
     if let Some(memmap_response) = LIMINE_MEMMAP_REQUEST.response() {
         // Safety: init_pmm is only called once which is here; no SMP/threading is currently active
         unsafe { KSTATE.mm.init_pmm(mm::pmm::Pmm::init(memmap_response.entries())) };
-        kernel_page = Vmm::setup_kernel_paging();
+        (kernel_page, boot_mappings) = Vmm::setup_kernel_paging(section_info);
 
         // TODO: reclaim only when we have our own stack
         // reclaim_bootloader_memory(memmap_response);
@@ -39,9 +42,19 @@ pub fn mm_init(section_info: &KernelSectionInfo) {
     // Safety: init_kernel_addr_space is only called once which is here; no SMP/threading is currently active
     unsafe { KSTATE.mm.init_kernel_addr_space(AddressSpace::empty(kernel_page)) };
     // Safety: kernel_addr_space was initialized one line ago, meaning it is guaranteed to exist
-    unsafe { KSTATE.mm.kernel_addr_space().lock().setup_kernel_vmas(section_info) };
-
-    remap_kernel_pages(section_info.kernel_start);
+    if let Err(error) = unsafe {
+        KSTATE.mm.kernel_addr_space().lock().setup_kernel_vmas(&boot_mappings)
+    } {
+        use core::fmt::Write;
+        
+        let mut buffer: FmtBuffer<64> = FmtBuffer::new();
+        let _ = write!(buffer, "Failed to set up kernel VMAs ({:?})", error);
+        
+        kernel_panic(
+            PanicCode::InitFailure,
+            buffer.as_str()
+        );
+    }
 }
 
 fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
@@ -104,38 +117,4 @@ fn reclaim_bootloader_memory(memmap_response: &Response<MemmapRespData>) {
     }
 
     kdebug!("reclaimed {} bootloader memory entries ({} MiB)", total_entries, total_bytes / 1024 / 1024);
-}
-
-fn remap_kernel_pages(kernel_start: u64) {
-    // Safety: full mm kernel boot happens before this function is called in mm_init, guaranteeing
-    // that kernel_addr_space is initialized
-    let addr_space = unsafe { KSTATE.mm.kernel_addr_space().lock() };
-
-    for vma in addr_space.vmas() {
-        if vma.start_addr.as_u64() < kernel_start {
-            continue;
-        }
-
-        let mut addr = vma.start_addr;
-        let flags = Vmm::vma_flags_to_page_flags(vma.flags);
-
-        while addr < vma.end_addr {
-            // Safety: page_ptr comes from KSTATE.mm.addr_space which was correctly initialized
-            // earlier in mm_init; addr comes from a valid VMA
-            unsafe {
-                if Vmm::remap_page(
-                    addr_space.page_ptr(),
-                    addr,
-                    flags
-                ).is_err() {
-                    kernel_panic(
-                        PanicCode::InvalidPageOperation,
-                        "Invalid page remap while attempting to remap kernel pages"
-                    );
-                };
-            }
-
-            addr += FRAME_SIZE;
-        }
-    }
 }

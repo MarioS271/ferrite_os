@@ -58,8 +58,11 @@ impl Pmm {
         }
 
         let mut total_mem = 0u64;
+
         for &entry in entries {
-            total_mem = total_mem.max(entry.base + entry.length);
+            if entry.type_ == memmap::MEMMAP_USABLE || entry.type_ == memmap::MEMMAP_BOOTLOADER_RECLAIMABLE {
+                total_mem = total_mem.max(entry.base + entry.length);
+            }
 
             if entry.type_ != memmap::MEMMAP_USABLE { continue; }
 

@@ -87,19 +87,35 @@ impl Vmm {
         let page_ptr = address_space.page_ptr();
         let page_flags = Self::vma_flags_to_page_flags(vma_flags);
 
-        let mut offset = 0;
+        let mut offset = 0u64;
         while offset < size {
-            let frame = pmm.alloc_frame_zeroed().ok_or(VmmError::OutOfMemory)?;
+            let frame = match pmm.alloc_frame_zeroed() {
+                Some(frame) => frame,
+                None => {
+                    // Safety: nothing except this method could hold refs/ptrs into this, and
+                    // this method doesn't
+                    unsafe { Self::unmap_region(pmm, address_space, virt)? };
+                    return Err(VmmError::OutOfMemory);
+                }
+            };
 
-            unsafe {
+            if let Err(error) = unsafe {
                 Self::map_page(
                     pmm,
                     page_ptr,
-                    virt,
+                    virt + offset,
                     frame,
                     crate::arch::x86_64::mm::vmm::page_type::PageType::Normal,   // TODO: abstract somehow cause arch specific enums cant be used here
                     page_flags
-                )?;
+                )
+            } {
+                pmm.free_frame(frame);
+
+                // Safety: nothing except this function could hold refs/ptrs into this region yet,
+                // and this function doesn't
+                unsafe { Self::unmap_region(pmm, address_space, virt)?; }
+
+                return Err(error);
             }
 
             offset += FRAME_SIZE;

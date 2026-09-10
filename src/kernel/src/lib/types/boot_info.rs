@@ -11,11 +11,11 @@ use crate::kprint::state::LogTargets;
 /// This does not contain a mem map entry, each arch is responsible for that as mm_init
 /// is per arch anyway
 pub struct BootInfo {
-    pub cmdline: KernelCmdline,
     pub hhdm_offset: u64,
     pub rsdp_addr: Option<u64>,
-    pub framebuffer: FramebufferInfo,
     pub kernel_sections: KernelSectionInfo,
+    pub cmdline: KernelCmdline,
+    pub framebuffer: FramebufferInfo,
 }
 
 
@@ -198,6 +198,7 @@ pub struct FramebufferInfo {
 
 /// Virtual addresses of kernel ELF section boundaries
 pub struct KernelSectionInfo {
+    pub kernel_phys_start: u64,
     pub kernel_start: u64,
     /// This points to the byte after the last `.text` byte
     pub kernel_text_end: u64,

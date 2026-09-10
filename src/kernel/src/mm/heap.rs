@@ -16,10 +16,10 @@ use x86_64::structures::paging::PageTableFlags;
 // TODO: redo heap allocator properly
 
 /// First virtual address of the heap region (higher-half kernel space).
-static HEAP_BASE_ADDRESS: VirtAddr = VirtAddr::new(0xffff_8080_0000_0000);
+const HEAP_BASE_ADDRESS: VirtAddr = VirtAddr::new(0xffff_f800_0000_0000);
 
 /// Total heap size in bytes (4 MiB).
-static HEAP_SIZE: usize = 0x400_000;
+const HEAP_SIZE: usize = 0x400_000;
 
 /// The global allocator instance; empty until [`init`].
 #[global_allocator]

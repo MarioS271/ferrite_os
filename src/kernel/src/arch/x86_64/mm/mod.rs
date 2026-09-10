@@ -5,3 +5,4 @@
 
 pub(crate) mod pmm;
 pub(crate) mod vmm;
+pub(crate) mod layout;

@@ -3,9 +3,9 @@
 //!
 //! Authors: MarioS271
 
-use core::fmt::{Display, Debug, UpperHex, LowerHex};
-use core::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::state::kstate::KSTATE;
+use core::fmt::{Debug, Display, LowerHex, UpperHex};
+use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// A type representing physical addresses in the CPU's physical address space
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

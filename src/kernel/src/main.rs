@@ -6,6 +6,7 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
+#![allow(special_module_name)]
 
 extern crate alloc;
 
@@ -53,15 +54,6 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
 
     kinfo!("Hello, Ferrite!");
     kdebug!("Debug kprint is active!");
-
-    kemerg!("Emergency");
-    kalert!("Alert");
-    kcrit!("Critical");
-    kerror!("Error");
-    kwarn!("Warn");
-    knotice!("Notice");
-    kinfo!("Info");
-    kdebug!("Debug");
 
     arch::init(&boot_info);
     cpu::instructions::enable_interrupts();

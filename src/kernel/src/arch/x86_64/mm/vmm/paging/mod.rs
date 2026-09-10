@@ -5,14 +5,17 @@
 
 mod helpers;
 mod setup_kernel_paging;
-mod map;
+mod map_page;
 mod unmap;
 mod remap;
 mod translate;
+mod map_range;
 
 use super::page_type::PageType;
 use crate::lib::addr::{PhysAddr, VirtAddr};
+use crate::lib::types::boot_info::KernelSectionInfo;
 use crate::mm::pmm::Pmm;
+use crate::mm::vmm::boot_mapping::BootMappings;
 use crate::mm::vmm::traits::VmmPaging;
 use crate::mm::vmm::vma::VmaFlags;
 use crate::mm::vmm::{Vmm, VmmResult};
@@ -25,8 +28,8 @@ impl VmmPaging for Vmm {
     type PageTableFlags = PageTableFlags;
 
     #[inline(always)]
-    fn setup_kernel_paging() -> VirtAddr {
-        setup_kernel_paging::setup_kernel_paging()
+    fn setup_kernel_paging(sections: &KernelSectionInfo) -> (VirtAddr, BootMappings) {
+        setup_kernel_paging::setup_kernel_paging(sections)
     }
 
     #[inline(always)]
@@ -38,7 +41,20 @@ impl VmmPaging for Vmm {
         page_type: Self::PageType,
         flags: Self::PageTableFlags
     ) -> VmmResult {
-        unsafe { map::map_page(pmm, page_ptr, virt, phys, page_type, flags) }
+        unsafe { map_page::map_page(pmm, page_ptr, virt, phys, page_type, flags) }
+    }
+
+    #[inline(always)]
+    unsafe fn map_range(
+        pmm: &mut Pmm,
+        page_ptr: VirtAddr,
+        virt: VirtAddr,
+        phys: PhysAddr,
+        size: u64,
+        flags: Self::PageTableFlags,
+        can_overmap: bool
+    ) -> VmmResult {
+        unsafe { map_range::map_range(pmm, page_ptr, virt, phys, size, flags, can_overmap) }
     }
 
     #[inline(always)]

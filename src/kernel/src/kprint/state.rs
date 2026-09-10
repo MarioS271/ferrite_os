@@ -5,9 +5,9 @@
 
 use super::ringbuffer::Ringbuffer;
 use crate::kprint::log_entry::LogLevel;
+use crate::lib::macros::bitflags::bitflags;
 use crate::lib::sync::irq_mutex::{IrqMutex, IrqMutexGuard};
 use core::sync::atomic::{AtomicU8, Ordering};
-use crate::lib::macros::bitflags::bitflags;
 
 /// A struct which goes into [`KSTATE`](crate::state::kstate::KSTATE) and contains an [`IrqMutex`]
 /// wrapped [`KPrintState`] and the current `max_log_level` and `log_targets` as [`AtomicU8`]s
@@ -32,7 +32,7 @@ impl KPrint {
     }
 
     /// Locks and returns an [`IrqMutexGuard`] of [`KPrintState`]
-    pub fn lock(&self) -> IrqMutexGuard<KPrintState> {
+    pub fn lock(&self) -> IrqMutexGuard<'_, KPrintState> {
         self.lockable.lock()
     }
 
