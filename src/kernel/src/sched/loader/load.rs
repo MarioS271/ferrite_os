@@ -3,19 +3,19 @@
 //!
 //! Authors: MarioS271
 
-use crate::kemerg;
 use crate::lib::addr::VirtAddr;
+use crate::mm::MmResult;
 use crate::mm::pmm::FRAME_SIZE;
+use crate::mm::vmm::Vmm;
 use crate::mm::vmm::address_space::AddressSpace;
 use crate::mm::vmm::traits::VmmPaging;
 use crate::mm::vmm::vma::VmaFlags;
-use crate::mm::vmm::Vmm;
 use crate::sched::loader::defs::phdrs::ElfPhdr;
 use crate::state::kstate::KSTATE;
 
 /// Map VMAs and pages according to the ELF phdrs and copy the ELF binary into the
 /// freshly mapped memory
-pub fn map_phdrs_and_copy_elf(addr_space: &mut AddressSpace, phdrs: &[ElfPhdr], elf: &[u8]) {
+pub fn map_phdrs_and_copy_elf(addr_space: &mut AddressSpace, phdrs: &[ElfPhdr], elf: &[u8]) -> MmResult<()> {
     for phdr in phdrs {
         if phdr.p_type != ElfPhdr::PT_LOAD {
             continue;
@@ -33,25 +33,21 @@ pub fn map_phdrs_and_copy_elf(addr_space: &mut AddressSpace, phdrs: &[ElfPhdr], 
         // Safety: the PMM was already initialized in stage 2
         let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
 
-        let res = Vmm::map_region(
+        Vmm::map_region(
             &mut pmm,
             addr_space,
             vaddr_start,
             size,
             vma_flags
-        );
+        )?;
 
         drop(pmm);
-
-        if let Err(error) = res {
-            kemerg!("Vmm::map_region failed, halting (error code: {:?})", error);
-            crate::cpu::instructions::halt_forever();
-        }
 
         // Safety: map_region correctly mapped memory in this code path and nothing is running
         // in parallel
         unsafe { copy_segment_data(addr_space, phdr, elf) };
     }
+    Ok(())
 }
 
 /// Copies an ELF segment into the process's address space
@@ -88,7 +84,7 @@ unsafe fn copy_segment_data(addr_space: &AddressSpace, phdr: &ElfPhdr, elf: &[u8
 }
 
 /// Set up a stack for the user process
-pub fn setup_user_stack(addr_space: &mut AddressSpace) -> VirtAddr {
+pub fn setup_user_stack(addr_space: &mut AddressSpace) -> MmResult<VirtAddr> {
     let stack_size = FRAME_SIZE * 4;    // TODO: dynamically do this
     let stack_top = crate::mm::layout::USER_STACK_TOP;
     let stack_bottom = stack_top - stack_size;
@@ -97,20 +93,13 @@ pub fn setup_user_stack(addr_space: &mut AddressSpace) -> VirtAddr {
     let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
 
     // TODO: lazily map this (needs user pf handler)
-    let res = Vmm::map_region(
+    Vmm::map_region(
         &mut pmm,
         addr_space,
         stack_bottom,
         stack_size,
         VmaFlags::USER | VmaFlags::READ | VmaFlags::WRITE
-    );
+    )?;
 
-    drop(pmm);
-
-    if let Err(error) = res {
-        kemerg!("Vmm::map_region failed, halting (error code: {:?})", error);
-        crate::cpu::instructions::halt_forever();
-    }
-
-    stack_top
+    Ok(stack_top)
 }

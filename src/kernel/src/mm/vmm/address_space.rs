@@ -31,8 +31,11 @@ impl AddressSpace {
 
     /// Create a new address space with a zeroed root page, and copy the kernel mappings into the
     /// higher half
-    pub fn new_user_addr_space() -> Self {
-        // Safety: the PMM was already initialized in stage 2
+    ///
+    /// # Safety
+    /// The caller must guarantee that this method is only called post-stage-2 when memory management
+    /// has already been initialized
+    pub unsafe fn new_user_addr_space() -> Self {
         let frame = unsafe { KSTATE.mm.pmm() }.lock().alloc_frame().unwrap_or_else(
             || kernel_panic(
                 PanicCode::OutOfMemory,

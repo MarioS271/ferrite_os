@@ -24,14 +24,13 @@ pub struct Process {
 }
 impl Process {
     /// Create a new process which owns an address space
-    pub fn new(pid: Pid, parent_pid: Pid, addr_space: AddressSpace) -> Self {
+    pub fn new(pid: Pid, parent_pid: Pid, addr_space: AddressSpace, kernel_stack: KernelStack) -> Self {
         Self {
             pid,
             parent_pid,
             addr_space,
             status: ProcessStatus::Ready,
-            // TODO: allocate an actual stack once the kernel stack slot allocator exists
-            kernel_stack: KernelStack { base: VirtAddr::null(), size: 0 },
+            kernel_stack,
             regs: SavedRegs::new()
         }
     }

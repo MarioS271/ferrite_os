@@ -38,5 +38,6 @@ impl KState {
     /// struct, which we don't want
     pub fn init(&self) {
         self.kprint.init();
+        self.sched.init();
     }
 }

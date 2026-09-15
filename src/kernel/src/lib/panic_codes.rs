@@ -33,7 +33,7 @@ panic_codes! {
     ManuallyTriggeredPanic = 0x0001, "IntendedPanic";
     InitFailure = 0x0002, "RuntimeError";
 
-    // Programmer Failiures
+    // Programmer Failures
     UninitializedAccess = 0x0003, "ProgrammerError";
     DoubleInitialization = 0x0004, "ProgrammerError";
 
@@ -63,9 +63,13 @@ panic_codes! {
     DoubleFree = 0x0301, "ProgrammerError";
     IllegalFree = 0x0302, "ProgrammerError";
     OutOfMemory = 0x0303, "RuntimeError";
-    MisalignedAddress = 0x0304, "ProgrammerError";
+    MemoryMappingCollision = 0x0304, "ProgrammerError";
+    MisalignedAddress = 0x0305, "ProgrammerError";
     // Memory: Paging
     InvalidPageOperation = 0x0320, "RuntimeError";
+
+    // Binaries
+    InvalidBinary = 0x0400, "RuntimeError";
 
     // Display
     MalformedPsf2Font = 0x1000, "RuntimeError / ProgrammerError";

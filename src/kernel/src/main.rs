@@ -24,10 +24,11 @@ mod vfs;
 
 mod config;
 
+use crate::lib::addr::VirtAddr;
+use crate::lib::panic::kernel_panic;
+use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::boot_info::{BootInfo, FramebufferInfo};
-use crate::mm::vmm::address_space::AddressSpace;
-use crate::sched::loader::load::setup_user_stack;
-use crate::sched::loader::validate::validate_elf;
+use crate::sched::spawn::{SpawnError, spawn_from_elf};
 use crate::state::kstate::KSTATE;
 use crate::state::simple_state::SIMPLE_STATE;
 
@@ -45,7 +46,6 @@ pub static USER_BINARY: &[u8] = &USER_BINARY_ALIGNED.bytes;
 
 /// Abstract kernel entry point, called from the per-arch entry
 pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
-    // Early KSTATE populate
     KSTATE.mm.set_hhdm_offset(boot_info.hhdm_offset);
     KSTATE.kprint.config().set_max_log_level(boot_info.cmdline.log_level);
     KSTATE.kprint.config().set_log_targets(boot_info.cmdline.log_targets);
@@ -59,26 +59,30 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
     arch::init(&boot_info);
     cpu::instructions::enable_interrupts();
 
-    // very hacky elf loading setup right here :D
-    // TODO: refactor this properly into KSTATE.procs and so on
 
-    let (phdrs, e_entry) = validate_elf(USER_BINARY).unwrap_or_else(
-        |error| {
-            kemerg!("Failed to verify ELF binary ({:?}), halting", error);
-            cpu::instructions::halt_forever();
+    // Safety: we are already past stage 2
+    let pid = match unsafe { spawn_from_elf(USER_BINARY, 0) } {
+        Ok(p) => p,
+        Err(e) => {
+            kernel_panic(
+                match e {
+                    SpawnError::OutOfMemory => PanicCode::OutOfMemory,
+                    SpawnError::InvalidBinary => PanicCode::InvalidBinary,
+                    SpawnError::MappingCollision => PanicCode::MemoryMappingCollision
+                },
+                "Could not spawn the USER_BINARY process"
+            )
         }
-    );
-
-    let mut addr_space = AddressSpace::new_user_addr_space();
-    sched::loader::load::map_phdrs_and_copy_elf(&mut addr_space, phdrs, USER_BINARY);
-    let stack_top = setup_user_stack(&mut addr_space);
+    };
 
     unsafe {
-        cpu::userspace::initial_userspace_jump(
-            addr_space.page_ptr().as_u64() - KSTATE.mm.hhdm_offset(),
-            e_entry,
-            stack_top
-        );
+        KSTATE.sched.with_process(pid, |p| -> () {
+            cpu::userspace::initial_userspace_jump(
+                p.addr_space.page_ptr().as_u64() - KSTATE.mm.hhdm_offset(),
+                p.regs.rip,
+                VirtAddr::new(p.regs.rsp)
+            );
+        });
     }
 
     #[allow(unreachable_code)]
@@ -90,8 +94,8 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
 
 /// Initializes the Basic Framebuffer
 fn basic_fb_init(fb: &FramebufferInfo) {
-    use crate::drivers::gpu::basic_fb::framebuffer::BasicFramebuffer;
     use crate::drivers::gpu::basic_fb::font::Psf2Font;
+    use crate::drivers::gpu::basic_fb::framebuffer::BasicFramebuffer;
 
     // Safety: we are in a non-SMP/non-threading context
     unsafe {

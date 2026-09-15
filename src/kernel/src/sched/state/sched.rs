@@ -20,26 +20,26 @@ pub struct Sched {
 }
 
 impl Sched {
-    /// Constructor; initializes all values zeroed or uninited
+    /// Constructor; initializes all values zeroed
     pub const fn new() -> Self {
         Self {
             procs: UncheckedCell::new(),
             active_pid: AtomicPid::new(0),
-            next_pid: AtomicPid::new(1)
+            next_pid: AtomicPid::new(0)
         }
     }
 
-    /// Initialize an empty [`ProcessMap`] inside `Sched::procs`
+    /// Initialize the sched state struct to its correct default values
     ///
     /// # Safety
     /// The caller must guarantee the following:
     /// - That this method has never been called before and will never be called again
     /// - That at the time of calling this method, no references or pointers to this data exist
     /// - While this method is being called, no other CPU is working with the given data
-    pub unsafe fn init_procs(&self) {
+    pub fn init(&self) {
         unsafe { self.procs.init(IrqMutex::new(BTreeMap::new())); }
+        self.next_pid.store(1, Ordering::Relaxed);
     }
-
 
     /// Hand out the next free PID
     pub fn alloc_pid(&self) -> Pid {
