@@ -36,7 +36,8 @@ use crate::state::simple_state::SIMPLE_STATE;
 struct AlignedBytes<const N: usize> {
     bytes: [u8; N],
 }
-static USER_BINARY_ALIGNED: AlignedBytes<4656> = AlignedBytes {
+const USER_BINARY_LEN: usize = include_bytes!("../resources/user-binary").len();
+static USER_BINARY_ALIGNED: AlignedBytes<USER_BINARY_LEN> = AlignedBytes {
     bytes: *include_bytes!("../resources/user-binary"),
 };
 pub static USER_BINARY: &[u8] = &USER_BINARY_ALIGNED.bytes;
