@@ -4,6 +4,13 @@ services:
     image: ferrite_os:latest
     container_name: ferrite_os
 
+    # On Linux the bind mount preserves uids, so a root container leaves
+    # root-owned files in build/ that the host-side build script cannot
+    # write. build.py sets these on POSIX; Docker Desktop (Windows/macOS)
+    # maps ownership itself, so there they stay unset and the container
+    # keeps running as root.
+    user: "${FERRITE_UID:-0}:${FERRITE_GID:-0}"
+
     volumes:
       - .:/ferrite_os
       - cargo_registry:/usr/local/cargo/registry

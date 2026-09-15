@@ -30,5 +30,13 @@ RUN git clone https://github.com/limine-bootloader/limine.git \
 
 ENV LIMINE_PATH=/opt/limine
 
+
+# The container may run as the invoking host user (see docker-compose.yml),
+# so every path cargo writes to must be writable by an arbitrary uid.
+# Named volumes inherit the permissions of the image directory they cover,
+# which is why registry/git/target are created here rather than by the mount.
+RUN mkdir -p /usr/local/cargo/registry /usr/local/cargo/git /ferrite_os/target && \
+    chmod -R a+rwX /usr/local/cargo /usr/local/rustup /ferrite_os/target
+
 WORKDIR /ferrite_os
 CMD ["bash"]

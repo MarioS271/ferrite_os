@@ -58,7 +58,8 @@ The kernel is mapped into the higher half at `0xffff_ffff_8000_0000`.
 ### 2.1. Ferrite's build system
 
 Ferrite uses a python build script system, where per arch there is one `build.py`, which can build and immediately also run
-the kernel in QEMU. For required software for building/running the kernel, refer to [§ 2.2. Requirements](#22-requirements)
+the kernel in QEMU. Helpers shared by all scripts (config loading, container lifecycle, command dispatch) live in
+[scripts/lib.py](scripts/lib.py). For required software for building/running the kernel, refer to [§ 2.2. Requirements](#22-requirements)
 
 For information about the docker container in which the kernel gets build, refer to [Dockerfile](Dockerfile)
 and [docker-compose.yml](docker-compose.yml).
@@ -97,7 +98,7 @@ You can omit `[extra_paths]` entirely if everything is already on your PATH.
 ### `scripts/<arch>/build.py` -- Building and Running
 
 ```
-python scripts/<arch>/build.py build   # compile kernel + create ISO (skips unchanged sources)
+python scripts/<arch>/build.py build   # compile kernel + create ISO
 python scripts/<arch>/build.py run     # launch QEMU with UEFI firmware
 python scripts/<arch>/build.py all     # build then run
 python scripts/<arch>/build.py clean   # delete build/ and target/

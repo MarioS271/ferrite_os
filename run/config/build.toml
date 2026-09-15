@@ -5,10 +5,3 @@ profile = "debug"
 debug-checks = true
 debug-logging = true
 vmm-debug-logging = false
-
-[extra_paths]
-paths = [
-    "C:/Program Files/qemu",
-    "C:/Program Files/Docker/Docker/resources/bin",
-    "C:/Users/mario/.cargo/bin",
-]
