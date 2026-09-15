@@ -1,3 +1,6 @@
 [workspace]
 members = ["src/kernel"]
 resolver = "2"
+
+[profile.release]
+strip = "symbols"
