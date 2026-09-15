@@ -34,6 +34,9 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
+      - name: Create Empty User Binary
+        run: touch src/kernel/resources/user-binary
+
       # Target + build-std come from .cargo/config.toml, so plain `cargo doc`
       # documents the kernel for x86_64-unknown-none. --enable-index-page emits
       # a top-level index.html that redirects into the crate's docs.
