@@ -8,16 +8,16 @@ use crate::lib::addr::{PhysAddr, VirtAddr};
 use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::boot_info::KernelSectionInfo;
+use crate::lib::types::fmt_buffer::FmtBuffer;
 use crate::mm::pmm::FRAME_SIZE;
+use crate::mm::vmm::Vmm;
 use crate::mm::vmm::address_space::AddressSpace;
 use crate::mm::vmm::boot_mapping::BootMappings;
 use crate::mm::vmm::traits::VmmPaging;
-use crate::mm::vmm::Vmm;
 use crate::state::kstate::KSTATE;
 use crate::{kdebug, mm};
 use limine::memmap::MEMMAP_BOOTLOADER_RECLAIMABLE;
 use limine::request::{MemmapRespData, Response};
-use crate::lib::types::fmt_buffer::FmtBuffer;
 
 pub fn mm_init(section_info: &KernelSectionInfo) {
     let kernel_page: VirtAddr;
@@ -46,7 +46,7 @@ pub fn mm_init(section_info: &KernelSectionInfo) {
         KSTATE.mm.kernel_addr_space().lock().setup_kernel_vmas(&boot_mappings)
     } {
         use core::fmt::Write;
-        
+
         let mut buffer: FmtBuffer<64> = FmtBuffer::new();
         let _ = write!(buffer, "Failed to set up kernel VMAs ({:?})", error);
         

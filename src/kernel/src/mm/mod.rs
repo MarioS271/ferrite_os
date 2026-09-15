@@ -4,6 +4,8 @@
 //! Authors: MarioS271
 
 mod mm;
+pub(crate) use mm::*;
+
 pub(crate) mod vmm;
 pub(crate) mod heap;
 pub(crate) mod state;
