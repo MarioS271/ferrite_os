@@ -4,4 +4,3 @@
 //! Authors: MarioS271
 
 pub(crate) mod sched;
-pub(crate) mod procs;

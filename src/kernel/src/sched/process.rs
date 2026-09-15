@@ -5,7 +5,6 @@
 
 use crate::lib::addr::VirtAddr;
 use crate::mm::vmm::address_space::AddressSpace;
-use core::borrow::Borrow;
 use core::sync::atomic::AtomicI32;
 
 /// Type which represents a PID
@@ -23,36 +22,30 @@ pub struct Process {
     pub kernel_stack: KernelStack,
     pub regs: SavedRegs
 }
-impl Borrow<Pid> for Process {
-    /// Returns a reference to [`Process::pid`] to make it possible for [`BTreeSet`] to
-    /// compare it with a [`Pid`] directly
-    fn borrow(&self) -> &Pid {
-        &self.pid
-    }
-}
-impl PartialEq for Process {
-    /// Only checks equality for [`Process::pid`] and no other property
-    fn eq(&self, other: &Self) -> bool {
-        self.pid.eq(&other.pid)
-    }
-}
-impl Eq for Process {}
-impl PartialOrd for Process {
-    /// Delegates to [`Process::cmp`]
-    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Process {
-    /// Compares only [`Process::pid`] and no other property
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.pid.cmp(&other.pid)
+impl Process {
+    /// Create a new process which owns an address space
+    pub fn new(pid: Pid, parent_pid: Pid, addr_space: AddressSpace) -> Self {
+        Self {
+            pid,
+            parent_pid,
+            addr_space,
+            status: ProcessStatus::Ready,
+            // TODO: allocate an actual stack once the kernel stack slot allocator exists
+            kernel_stack: KernelStack { base: VirtAddr::null(), size: 0 },
+            regs: SavedRegs::new()
+        }
     }
 }
 
 /// The status of a process
 pub enum ProcessStatus {
+    /// Ready to be run by the scheduler
+    Ready,
+    /// Currently running on a CPU
     Running,
+    /// Waiting on a resource (I/O, a lock, ...)
+    Waiting,
+    /// Exited; also contains an exit code
     Zombie(i32)
 }
 
@@ -70,4 +63,19 @@ pub struct SavedRegs {
     pub r8:  u64, pub r9:  u64, pub r10: u64, pub r11: u64,
     pub r12: u64, pub r13: u64, pub r14: u64, pub r15: u64,
     pub rip: u64, pub rsp: u64, pub rflags: u64,
+}
+impl SavedRegs {
+    /// Construct a zeroed (except `rflags`) [`SavedRegs`] instance
+    ///
+    /// `rflags` gets the reserved bit 1, which the CPU requires to be set,
+    /// plus IF so the process can be preempted
+    pub const fn new() -> Self {
+        Self {
+            rax: 0, rbx: 0, rcx: 0, rdx: 0,
+            rsi: 0, rdi: 0, rbp: 0,
+            r8: 0, r9: 0, r10: 0, r11: 0,
+            r12: 0, r13: 0, r14: 0, r15: 0,
+            rip: 0, rsp: 0, rflags: 0x202
+        }
+    }
 }
