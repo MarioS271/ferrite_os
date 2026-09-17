@@ -4,6 +4,7 @@
 //! Authors: MarioS271
 
 pub(crate) mod tables;
+pub(crate) mod gs_info;
 pub(crate) mod instructions;
 pub(crate) mod state;
 pub(crate) mod userspace;

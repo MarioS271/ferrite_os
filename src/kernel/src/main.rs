@@ -67,22 +67,30 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
             kernel_panic(
                 match e {
                     SpawnError::OutOfMemory => PanicCode::OutOfMemory,
-                    SpawnError::InvalidBinary => PanicCode::InvalidBinary,
+                    SpawnError::InvalidBinary => PanicCode::NoWorkingInit,
                     SpawnError::MappingCollision => PanicCode::MemoryMappingCollision
                 },
                 "Could not spawn the USER_BINARY process"
             )
         }
     };
+    KSTATE.sched.set_active_pid(pid);
 
     unsafe {
-        KSTATE.sched.with_process(pid, |p| -> () {
-            cpu::userspace::initial_userspace_jump(
-                p.addr_space.page_ptr().as_u64() - KSTATE.mm.hhdm_offset(),
-                p.regs.rip,
-                VirtAddr::new(p.regs.rsp)
-            );
-        });
+        let (page_ptr, rip, rsp) = KSTATE.sched.with_process(pid, |p| {
+            (p.addr_space.page_ptr(), p.regs.rip, p.regs.rsp)
+        }).unwrap_or_else(
+            || kernel_panic(
+                PanicCode::ProcessNotFound,
+                "Could not fetch process info from process map"
+            )
+        );
+
+        cpu::userspace::initial_userspace_jump(
+            page_ptr.as_u64() - KSTATE.mm.hhdm_offset(),
+            rip,
+            VirtAddr::new(rsp)
+        );
     }
 
     #[allow(unreachable_code)]

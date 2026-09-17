@@ -28,16 +28,16 @@ macro_rules! panic_codes {
 }
 
 panic_codes! {
-    // General
+    // General (0x00xx)
     Unknown = 0x0000, "Unknown";
     ManuallyTriggeredPanic = 0x0001, "IntendedPanic";
     InitFailure = 0x0002, "RuntimeError";
-
     // Programmer Failures
     UninitializedAccess = 0x0003, "ProgrammerError";
     DoubleInitialization = 0x0004, "ProgrammerError";
 
-    // x86_64 Exceptions
+    // Exceptions (0x01xx)
+    // x86_&4
     #[cfg(target_arch = "x86_64")] IllegalInterrupt = 0x0099, "CpuException";
     #[cfg(target_arch = "x86_64")] DivideError = 0x0100, "CpuException";
     #[cfg(target_arch = "x86_64")] NmiHardwareFailure = 0x0102, "CpuException";
@@ -58,19 +58,21 @@ panic_codes! {
     #[cfg(target_arch = "x86_64")] VmmCommunicationException = 0x0129, "CpuException";
     #[cfg(target_arch = "x86_64")] SecurityException = 0x0130, "CpuException";
 
-    // Memory
+    // Memory (0x030x...0x036x)
     NoValidMemMapEntry = 0x0300, "RuntimeError";
     DoubleFree = 0x0301, "ProgrammerError";
     IllegalFree = 0x0302, "ProgrammerError";
     OutOfMemory = 0x0303, "RuntimeError";
-    MemoryMappingCollision = 0x0304, "ProgrammerError";
-    MisalignedAddress = 0x0305, "ProgrammerError";
-    // Memory: Paging
-    InvalidPageOperation = 0x0320, "RuntimeError";
+    OutOfVirtualMemory = 0x0304, "RuntimeError";
+    MemoryMappingCollision = 0x0305, "ProgrammerError";
+    MisalignedAddress = 0x0306, "ProgrammerError";
+    // Memory: Paging (0x037x)
+    InvalidPageOperation = 0x0370, "RuntimeError";
 
-    // Binaries
-    InvalidBinary = 0x0400, "RuntimeError";
+    // Scheduler (0x04xx)
+    NoWorkingInit = 0x0400, "RuntimeError";
+    ProcessNotFound = 0x401, "RuntimeError";
 
-    // Display
+    // Display (0x1000)
     MalformedPsf2Font = 0x1000, "RuntimeError / ProgrammerError";
 }

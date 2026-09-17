@@ -4,13 +4,12 @@
 //! Authors: MarioS271
 
 use crate::lib::addr::VirtAddr;
-use crate::mm::MmError;
+use crate::mm::mm_error::MmError;
 use crate::mm::vmm::address_space::AddressSpace;
 use crate::sched::loader::defs::error::ElfError;
 use crate::sched::loader::load::{map_phdrs_and_copy_elf, setup_user_stack};
 use crate::sched::loader::validate::validate_elf;
 use crate::sched::process::{KernelStack, Pid, Process};
-use crate::sched::state::sched::Sched;
 use crate::state::kstate::KSTATE;
 
 /// Wrapper type for `Result<T, SpawnError>`
@@ -52,7 +51,7 @@ pub unsafe fn spawn_from_elf(elf: &[u8], parent_pid: Pid) -> SpawnResult<Pid> {
     map_phdrs_and_copy_elf(&mut addr_space, phdrs, elf)?;
 
     let user_stack_top = setup_user_stack(&mut addr_space)?;
-    let kernel_stack_top = KernelStack { base: VirtAddr::null(), size: 0 };
+    let kernel_stack_top = KernelStack { base: VirtAddr::null(), size: 0 };     // TODO: proper kernel stack
 
     let pid = KSTATE.sched.alloc_pid();
 
@@ -69,3 +68,5 @@ pub unsafe fn spawn_from_elf(elf: &[u8], parent_pid: Pid) -> SpawnResult<Pid> {
 
     Ok(pid)
 }
+
+// TODO: enter_process

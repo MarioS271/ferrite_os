@@ -3,11 +3,15 @@
 //!
 //! Authors: MarioS271
 
+use crate::lib::addr::VirtAddr;
 use crate::lib::sync::irq_mutex::IrqMutex;
 use crate::lib::sync::unchecked_cell::UncheckedCell;
 use crate::mm::pmm::Pmm;
 use crate::mm::vmm::address_space::AddressSpace;
 use core::sync::atomic::{AtomicU64, Ordering};
+
+#[cfg(feature = "debug-checks")] use crate::lib::panic::kernel_panic;
+#[cfg(feature = "debug-checks")] use crate::lib::panic_codes::PanicCode;
 
 // TODO: write-hot locks must not share a cache line with read-mostly fields
 
@@ -16,7 +20,8 @@ use core::sync::atomic::{AtomicU64, Ordering};
 pub struct Mm {
     hhdm_offset: AtomicU64,
     pmm: UncheckedCell<IrqMutex<Pmm>>,
-    kernel_addr_space: UncheckedCell<IrqMutex<AddressSpace>>
+    kernel_addr_space: UncheckedCell<IrqMutex<AddressSpace>>,
+    next_kernel_stack: AtomicU64
 }
 
 impl Mm {
@@ -25,8 +30,14 @@ impl Mm {
         Self {
             hhdm_offset: AtomicU64::new(0),
             pmm: UncheckedCell::new(),
-            kernel_addr_space: UncheckedCell::new()
+            kernel_addr_space: UncheckedCell::new(),
+            next_kernel_stack: AtomicU64::new(0)
         }
+    }
+
+    /// Initialize `Mm`'s default values
+    pub fn init(&self) {
+        self.next_kernel_stack.store(super::layout::KERNEL_STACKS_BASE.as_u64(), Ordering::Release);
     }
 
     /// Sets the HHDM offset
@@ -34,7 +45,7 @@ impl Mm {
         self.hhdm_offset.store(offset, Ordering::Release);
     }
 
-    /// Move the given [`Pmm`] into `KSTATE::mm::pmm`
+    /// Move the given [`Pmm`] into `Mm::pmm`
     ///
     /// # Safety
     /// The caller must guarantee the following:
@@ -45,7 +56,7 @@ impl Mm {
         unsafe { self.pmm.init(IrqMutex::new(pmm)); }
     }
 
-    /// Move the given [`AddressSpace`] into `KSTATE::mm::kernel_addr_space`
+    /// Move the given [`AddressSpace`] into `Mm::kernel_addr_space`
     ///
     /// # Safety
     /// The caller must guarantee the following:
@@ -62,9 +73,6 @@ impl Mm {
 
         #[cfg(feature = "debug-checks")]
         if hhdm == 0 {
-            use crate::lib::panic::kernel_panic;
-            use crate::lib::panic_codes::PanicCode;
-
             kernel_panic(
                 PanicCode::UninitializedAccess,
                 "Attempted to access KSTATE.mm.hhdm_offset before it was initialized"
@@ -74,7 +82,7 @@ impl Mm {
         hhdm
     }
 
-    /// Getter for `KSTATE::mm::pmm`
+    /// Getter for `Mm::pmm`
     ///
     /// # Safety
     /// The caller must guarantee the following:
@@ -85,7 +93,7 @@ impl Mm {
         unsafe { self.pmm.get() }
     }
 
-    /// Getter for `KSTATE::mm::kernel_address_space`
+    /// Getter for `Mm::kernel_address_space`
     ///
     /// # Safety
     /// The caller must guarantee the following:
@@ -94,5 +102,32 @@ impl Mm {
     ///   exist or will exist
     pub unsafe fn kernel_addr_space(&self) -> &IrqMutex<AddressSpace> {
         unsafe { self.kernel_addr_space.get() }
+    }
+    
+    /// Get the starting address of the next kernel stack and increment it
+    pub fn alloc_kernel_stack_slot(&self) -> VirtAddr {
+        use super::layout::*;
+
+        let addr = self.next_kernel_stack.fetch_add(KERNEL_STACK_SLOT_SIZE, Ordering::Relaxed);
+        let addr_virt = VirtAddr::new(addr);
+
+        #[cfg(feature = "debug-checks")]
+        {
+            if addr_virt < KERNEL_STACKS_BASE {
+                kernel_panic(
+                    PanicCode::UninitializedAccess,
+                    "Attempted to get the next kernel stack address before Mm::init was called"
+                );
+            }
+
+            if addr_virt > KERNEL_STACKS_BASE + KERNEL_STACKS_SIZE - KERNEL_STACK_SLOT_SIZE {
+                kernel_panic(
+                    PanicCode::OutOfVirtualMemory,
+                    "Could not allocate a kernel stack, out of virtual memory for kernel stacks (somehow)"
+                );
+            }
+        }
+
+        addr_virt
     }
 }

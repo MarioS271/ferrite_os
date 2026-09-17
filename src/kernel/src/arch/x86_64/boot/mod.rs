@@ -16,13 +16,16 @@ pub fn init(boot_info: &crate::lib::types::boot_info::BootInfo) {
     let user_data;
 
     // Safety:
-    // - These two methods are called exactly once here
+    // - These four methods are called exactly once here
     // - init_tss is called before init_gdt
     // - No SMP/threading is currently active
+    // - No jump to userspace has been made yet
+    // - We're on the BSP and TSS, GDT and GS Info are all for the BSP CPU
     unsafe {
         cpu.bsp_cpu_state().init_tss();
         (user_code, user_data) = cpu.bsp_cpu_state().init_gdt();
         cpu.global_cpu_state().init_idt();
+        cpu.bsp_cpu_state().init_gs_info();
     }
     cpu.global_cpu_state().set_user_selectors(user_code.0, user_data.0);
 

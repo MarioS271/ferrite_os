@@ -4,7 +4,7 @@
 //! Authors: MarioS271
 
 use crate::lib::addr::VirtAddr;
-use crate::mm::MmResult;
+use crate::mm::mm_error::MmResult;
 use crate::mm::pmm::FRAME_SIZE;
 use crate::mm::vmm::Vmm;
 use crate::mm::vmm::address_space::AddressSpace;

@@ -28,6 +28,10 @@ pub const KERNEL_HHDM_BASE: VirtAddr = VirtAddr::new(0xffff_8000_0000_0000);
 pub const KERNEL_HHDM_SIZE: u64 = 1 << 46;  // 64 TiB
 
 
+pub const KERNEL_STACK_SIZE: u64 = 16_384;  // 16 KiB
+pub const KERNEL_STACK_SLOT_SIZE: u64 = 1 << 20;  // 1 MiB
+
+
 // Lower Half (Userspace)
 pub const USER_MAX: u64 = 0x0000_8000_0000_0000;
 pub const USER_STACK_TOP: VirtAddr = VirtAddr::new(0x0000_7fff_ffff_f000);

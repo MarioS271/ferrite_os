@@ -24,15 +24,15 @@ pub fn gdt_init(tss: &'static Tss) -> (GlobalDescriptorTable, GdtSetupInfo) {
 
     let kernel_code = gdt.append(Descriptor::kernel_code_segment());
     let kernel_data = gdt.append(Descriptor::kernel_data_segment());
-    let user_code = gdt.append(Descriptor::user_code_segment());
     let user_data = gdt.append(Descriptor::user_data_segment());
+    let user_code = gdt.append(Descriptor::user_code_segment());
     let tss_selector = gdt.append(Descriptor::tss_segment(unsafe { tss.tss() }));
 
     (gdt, GdtSetupInfo {
         kernel_code,
         kernel_data,
-        user_code,
         user_data,
+        user_code,
         tss_selector
     })
 }

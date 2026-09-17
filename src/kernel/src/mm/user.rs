@@ -1,48 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! High-Level Memory Management Functions
+//! High-Level MM functions that are used for allocating user-space memory
 //!
 //! Authors: MarioS271
 
 use crate::lib::addr::VirtAddr;
 use crate::mm::layout;
+use crate::mm::mm_error::{MmError, MmResult};
 use crate::mm::pmm::FRAME_SIZE;
+use crate::mm::vmm::Vmm;
 use crate::mm::vmm::address_space::AddressSpace;
 use crate::mm::vmm::vma::VmaFlags;
-use crate::mm::vmm::{Vmm, VmmError};
 use crate::state::kstate::KSTATE;
-
-/// A wrapper around `Result<T, MmError>`
-pub type MmResult<T> = Result<T, MmError>;
-
-/// An enum which describes possible memory management errors that can occur
-#[derive(Debug)]
-pub enum MmError {
-    /// No free memory left to allocate
-    OutOfMemory,
-    /// The given address is not frame aligned
-    MisalignedAddress,
-    /// The requested region overlaps with an existing one
-    Overlap,
-    /// No region at the given address found
-    NotFound
-}
-impl From<VmmError> for MmError {
-    /// Convert a given [`VmmError`] to a [`MmError`]
-    fn from(value: VmmError) -> Self {
-        match value {
-            VmmError::OutOfMemory => Self::OutOfMemory,
-            VmmError::VmaOverlap => Self::Overlap,
-            VmmError::VmaNotFound => Self::NotFound,
-            VmmError::InvalidUnmap | VmmError::InvalidRemap => Self::NotFound
-        }
-    }
-}
 
 /// Lazily allocate memory in the given user process's address space
 ///
 /// By passing the `fixed_addr` parameter, the caller can request the memory to be mapped into a
 /// specific location in the address space
-pub fn alloc_user_mem(
+pub fn alloc(
     addr_space: &mut AddressSpace,
     fixed_addr: Option<VirtAddr>,
     size: u64,
@@ -69,13 +43,13 @@ pub fn alloc_user_mem(
     Ok(virt)
 }
 
-/// Free previously by [`alloc_user_mem`] allocated memory and release all associated frames back into
+/// Free previously by [`alloc`] allocated memory and release all associated frames back into
 /// the buddy allocator
 ///
 /// # Safety
 /// The caller must ensure that no live code or data holds references into any address mapped
 /// within `[virt, vma.end_addr)` after this method call returns
-pub unsafe fn free_user_mem(
+pub unsafe fn free(
     addr_space: &mut AddressSpace,
     virt: VirtAddr
 ) -> MmResult<()> {

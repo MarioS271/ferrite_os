@@ -3,12 +3,12 @@
 //!
 //! Authors: MarioS271
 
-mod mm;
-pub(crate) use mm::*;
 
 pub(crate) mod vmm;
 pub(crate) mod heap;
+pub(crate) mod mm_error;
 pub(crate) mod state;
+pub(crate) mod user;
 
 #[cfg(target_arch = "x86_64")] pub(crate) use crate::arch::x86_64::mm::pmm;
 #[cfg(target_arch = "x86_64")] pub(crate) use crate::arch::x86_64::mm::layout;

@@ -81,6 +81,8 @@ pub fn setup_kernel_paging(sections: &KernelSectionInfo) -> (VirtAddr, BootMappi
 /// Prepopulate the higher half with empty PDPTs so that if the kernel PML4 higher half ever gets
 /// cloned (like when creating processes), no stale higher halfs exist that aren't synced with the
 /// kernel's (which could cause page faults when switching into the kernel with user pages)
+///
+/// TODO: only create a zeroed pdpt for areas where we actually need them
 fn create_zeroed_pdpts(pmm: &mut Pmm, page_ptr: VirtAddr) {
     // Safety: page_ptr points to a newly allocated and zeroed frame that nothing else currently
     // references
@@ -101,7 +103,7 @@ fn create_zeroed_pdpts(pmm: &mut Pmm, page_ptr: VirtAddr) {
         );
 
         entry.set_addr(
-            PhysAddr::new(pdpt_frame.as_u64()).as_x86_64(),
+            pdpt_frame.as_x86_64(),
             PageTableFlags::PRESENT | PageTableFlags::WRITABLE
         );
     }
