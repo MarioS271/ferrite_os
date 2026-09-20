@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 debug-checks = []
 debug-logging = []
 vmm-debug-logging = []
+syscall-debug-logging = []
 
 [[bin]]
 name = "kernel"

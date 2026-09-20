@@ -6,6 +6,7 @@
 use crate::arch::x86_64::cpu::gs_info::{GS_INFO_KERNEL_STACK_TOP, GS_INFO_USER_RSP};
 use crate::arch::x86_64::syscall::frame::UserFrame;
 use crate::mm::layout::USER_MAX;
+use crate::state::kstate::KSTATE;
 use core::arch::naked_asm;
 
 /// Syscall entry point
@@ -27,11 +28,11 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
         "sub rsp, 8",           // _padding
         "push 0",               // ss
         "push 0",               // rsp (placeholder)
-        "push r11",             // r11
+        "push r11",             // user rflags
         "mov r11, gs:[{user_rsp}]",
         "mov [rsp + 8], r11",   // rsp
         "push 0",               // cs
-        "push rcx",             // rip
+        "push rcx",             // user rip
         "push rax",             // orig_rax
         "push rax",             // rax
         "push rdi",             // rdi
@@ -70,15 +71,18 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
         "add rsp, 8",           // cs
         "mov r11, {user_max}",
         "cmp rcx, r11",
-        "jae 42f",
+        "jae 1f",
         "pop r11",              // rflags
         "pop rsp",              // user rsp
 
         "swapgs",
         "sysretq",
 
-        "42:",  // because yes
-        "ud2",
+        "1:",
+        "sub rsp, 16",
+        "xor r11d, r11d",
+        "swapgs",
+        "iretq",
 
         kernel_stack_top = const GS_INFO_KERNEL_STACK_TOP,
         user_rsp = const GS_INFO_USER_RSP,
@@ -89,6 +93,12 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
 
 /// Dispatches incoming syscalls to the correct handler
 extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
-    crate::knotice!("syscall {} received", frame.orig_rax);
+    #[cfg(feature = "syscall-debug-logging")]
+    crate::kdebug!("syscall {} received", frame.orig_rax);
+
+    // restore cs and ss for the iretq path
+    frame.cs = KSTATE.cpu.global_cpu_state().user_code_selector() as u64;
+    frame.ss = KSTATE.cpu.global_cpu_state().user_data_selector() as u64;
+
     frame.rax = 0;
 }

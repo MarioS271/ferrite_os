@@ -22,10 +22,6 @@ use x86_64::registers::rflags::RFlags;
 /// - The GDT is already loaded on that CPU
 /// - This function is called before entering userspace for the first time on that CPU
 pub(crate) unsafe fn init(info: &GdtSetupInfo) {
-    unsafe {
-        Efer::update(|efer| efer.insert(EferFlags::SYSTEM_CALL_EXTENSIONS))
-    }
-
     Star::write(
         info.user_code, info.user_data, info.kernel_code, info.kernel_data
     ).unwrap_or_else(
@@ -40,9 +36,24 @@ pub(crate) unsafe fn init(info: &GdtSetupInfo) {
     );
 
     SFMask::write(
-        RFlags::INTERRUPT_FLAG
-        | RFlags::DIRECTION_FLAG
+        RFlags::CARRY_FLAG
+        | RFlags::PARITY_FLAG
+        | RFlags::AUXILIARY_CARRY_FLAG
+        | RFlags::ZERO_FLAG
+        | RFlags::SIGN_FLAG
         | RFlags::TRAP_FLAG
+        | RFlags::INTERRUPT_FLAG
+        | RFlags::DIRECTION_FLAG
+        | RFlags::OVERFLOW_FLAG
+        | RFlags::IOPL_LOW
+        | RFlags::IOPL_HIGH
+        | RFlags::NESTED_TASK
+        | RFlags::RESUME_FLAG
         | RFlags::ALIGNMENT_CHECK
+        | RFlags::ID
     );
+
+    unsafe {
+        Efer::update(|efer| efer.insert(EferFlags::SYSTEM_CALL_EXTENSIONS))
+    }
 }

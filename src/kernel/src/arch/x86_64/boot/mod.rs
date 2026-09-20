@@ -6,6 +6,8 @@
 mod entry;
 pub(crate) mod mm;
 
+// TODO: add CR4 init
+
 /// Initialize x86_64 specific stuff
 ///
 /// # Safety
