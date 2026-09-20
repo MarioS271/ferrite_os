@@ -5,7 +5,7 @@
 
 use crate::arch::x86_64::cpu::gs_info::{GS_INFO_KERNEL_STACK_TOP, GS_INFO_USER_RSP};
 use crate::arch::x86_64::syscall::frame::UserFrame;
-use crate::cpu::instructions::halt_forever;
+use crate::mm::layout::USER_MAX;
 use core::arch::naked_asm;
 
 /// Syscall entry point
@@ -51,14 +51,44 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
         "mov rdi, rsp",
         "call {dispatcher}",
 
+        "cli",
+        "pop r15",              // r15
+        "pop r14",              // r14
+        "pop r13",              // r13
+        "pop r12",              // r12
+        "pop rbp",              // rbp
+        "pop rbx",              // rbx
+        "pop r10",              // r10
+        "pop r9",               // r9
+        "pop r8",               // r8
+        "pop rdx",              // rdx
+        "pop rsi",              // rsi
+        "pop rdi",              // rdi
+        "pop rax",              // rax
+        "add rsp, 8",           // orig_rax
+        "pop rcx",              // rip
+        "add rsp, 8",           // cs
+        "mov r11, {user_max}",
+        "cmp rcx, r11",
+        "jae 42f",
+        "pop r11",              // rflags
+        "pop rsp",              // user rsp
+
+        "swapgs",
+        "sysretq",
+
+        "42:",  // because yes
+        "ud2",
+
         kernel_stack_top = const GS_INFO_KERNEL_STACK_TOP,
         user_rsp = const GS_INFO_USER_RSP,
-        dispatcher = sym syscall_dispatch
+        dispatcher = sym syscall_dispatch,
+        user_max = const USER_MAX
     )
 }
 
 /// Dispatches incoming syscalls to the correct handler
-extern "C" fn syscall_dispatch(frame: &mut UserFrame) -> ! {
+extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
     crate::knotice!("syscall {} received", frame.orig_rax);
-    halt_forever();
+    frame.rax = 0;
 }

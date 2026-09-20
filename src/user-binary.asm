@@ -5,3 +5,7 @@ section .text
 _start:
     mov eax, 42
     syscall
+    mov eax, 69
+    syscall
+_halt:
+    jmp _halt

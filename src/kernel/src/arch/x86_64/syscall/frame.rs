@@ -3,6 +3,7 @@
 //!
 //! Authors: MarioS271
 
+/// A snapshot of all CPU registers when transitioning into the kernel on syscalls
 #[repr(C)]
 pub struct UserFrame {
     pub r15: u64,

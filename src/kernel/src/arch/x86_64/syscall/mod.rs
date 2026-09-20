@@ -5,7 +5,6 @@
 
 mod entry;
 mod frame;
-mod exit;
 
 use crate::arch::x86_64::cpu::tables::gdt::GdtSetupInfo;
 use crate::lib::addr::VirtAddr;
