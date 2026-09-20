@@ -36,6 +36,7 @@ pub static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_entry() -> ! {
+    // Stage 0
     crate::state::kstate::KSTATE.init();
     
     serial_init();

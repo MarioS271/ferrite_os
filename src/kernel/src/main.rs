@@ -46,6 +46,7 @@ pub static USER_BINARY: &[u8] = &USER_BINARY_ALIGNED.bytes;
 
 /// Abstract kernel entry point, called from the per-arch entry
 pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
+    // Stage 1
     KSTATE.mm.set_hhdm_offset(boot_info.hhdm_offset);
     KSTATE.kprint.config().set_max_log_level(boot_info.cmdline.log_level);
     KSTATE.kprint.config().set_log_targets(boot_info.cmdline.log_targets);
@@ -56,7 +57,12 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
     kinfo!("Hello, Ferrite!");
     kdebug!("Debug kprint is active!");
 
-    arch::init(&boot_info);
+    // Stage 2
+    // Safety:
+    // - This is called exactly once right here
+    // - No SMP/threading is currently active
+    // - No jump to userspace has been made yet
+    unsafe { arch::init(&boot_info) };
     cpu::instructions::enable_interrupts();
 
 
@@ -77,14 +83,17 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
     KSTATE.sched.set_active_pid(pid);
 
     unsafe {
-        let (page_ptr, rip, rsp) = KSTATE.sched.with_process(pid, |p| {
-            (p.addr_space.page_ptr(), p.regs.rip, p.regs.rsp)
+        let (page_ptr, kernel_stack, rip, rsp) = KSTATE.sched.with_process(pid, |p| {
+            p.status = sched::process::ProcessStatus::Running;
+            (p.addr_space.page_ptr(), p.kernel_stack_top, p.regs.rip, p.regs.rsp)
         }).unwrap_or_else(
             || kernel_panic(
                 PanicCode::ProcessNotFound,
                 "Could not fetch process info from process map"
             )
         );
+
+        KSTATE.cpu.bsp_cpu_state().set_kernel_stack_top(kernel_stack);
 
         cpu::userspace::initial_userspace_jump(
             page_ptr.as_u64() - KSTATE.mm.hhdm_offset(),

@@ -3,13 +3,12 @@
 //!
 //! Authors: MarioS271
 
-use crate::lib::addr::VirtAddr;
 use crate::mm::mm_error::MmError;
 use crate::mm::vmm::address_space::AddressSpace;
 use crate::sched::loader::defs::error::ElfError;
 use crate::sched::loader::load::{map_phdrs_and_copy_elf, setup_user_stack};
 use crate::sched::loader::validate::validate_elf;
-use crate::sched::process::{KernelStack, Pid, Process};
+use crate::sched::process::{Pid, Process};
 use crate::state::kstate::KSTATE;
 
 /// Wrapper type for `Result<T, SpawnError>`
@@ -41,9 +40,7 @@ impl From<ElfError> for SpawnError {
 /// Spawn a new process, returning its PID
 ///
 /// # Safety
-/// The caller must guarantee that:
-/// - This method is only called post-stage-2 when memory management has already been initialized
-/// - [`Sched::init_procs`] has already been called
+/// The caller must guarantee that this method is only called after boot stage 2 has completed
 pub unsafe fn spawn_from_elf(elf: &[u8], parent_pid: Pid) -> SpawnResult<Pid> {
     let (phdrs, e_entry) = validate_elf(elf)?;
 
@@ -51,7 +48,9 @@ pub unsafe fn spawn_from_elf(elf: &[u8], parent_pid: Pid) -> SpawnResult<Pid> {
     map_phdrs_and_copy_elf(&mut addr_space, phdrs, elf)?;
 
     let user_stack_top = setup_user_stack(&mut addr_space)?;
-    let kernel_stack_top = KernelStack { base: VirtAddr::null(), size: 0 };     // TODO: proper kernel stack
+    let kernel_stack_top = unsafe {
+        crate::mm::kernel::alloc_stack(&mut KSTATE.mm.pmm().lock(), &mut KSTATE.mm.kernel_addr_space().lock())
+    }?;
 
     let pid = KSTATE.sched.alloc_pid();
 

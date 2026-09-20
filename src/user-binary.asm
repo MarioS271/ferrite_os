@@ -3,4 +3,5 @@ global _start
 
 section .text
 _start:
-    hlt             ; trigger a #GP
+    mov eax, 42
+    syscall

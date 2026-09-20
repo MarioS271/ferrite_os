@@ -8,3 +8,4 @@ pub(crate) mod boot;
 pub(crate) mod drivers;
 pub(crate) mod interrupts;
 pub(crate) mod mm;
+pub(crate) mod syscall;

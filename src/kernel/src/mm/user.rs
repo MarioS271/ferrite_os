@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! High-Level MM functions that are used for allocating user-space memory
+//! High-Level userspace memory management functions
 //!
 //! Authors: MarioS271
 

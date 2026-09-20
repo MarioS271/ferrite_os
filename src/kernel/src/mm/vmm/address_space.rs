@@ -33,8 +33,7 @@ impl AddressSpace {
     /// higher half
     ///
     /// # Safety
-    /// The caller must guarantee that this method is only called post-stage-2 when memory management
-    /// has already been initialized
+    /// The caller must guarantee that boot stage 2 has already been completed
     pub unsafe fn new_user_addr_space() -> Self {
         let frame = unsafe { KSTATE.mm.pmm() }.lock().alloc_frame().unwrap_or_else(
             || kernel_panic(

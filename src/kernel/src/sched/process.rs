@@ -19,18 +19,18 @@ pub struct Process {
     pub parent_pid: Pid,
     pub addr_space: AddressSpace,
     pub status: ProcessStatus,
-    pub kernel_stack: KernelStack,
+    pub kernel_stack_top: VirtAddr,
     pub regs: SavedRegs
 }
 impl Process {
     /// Create a new process which owns an address space
-    pub fn new(pid: Pid, parent_pid: Pid, addr_space: AddressSpace, kernel_stack: KernelStack) -> Self {
+    pub fn new(pid: Pid, parent_pid: Pid, addr_space: AddressSpace, kernel_stack_top: VirtAddr) -> Self {
         Self {
             pid,
             parent_pid,
             addr_space,
             status: ProcessStatus::Ready,
-            kernel_stack,
+            kernel_stack_top,
             regs: SavedRegs::new()
         }
     }
@@ -46,12 +46,6 @@ pub enum ProcessStatus {
     Waiting,
     /// Exited; also contains an exit code
     Zombie(i32)
-}
-
-/// The kernel stack of a process (start address and size)
-pub struct KernelStack {
-    pub base: VirtAddr,
-    pub size: u64
 }
 
 /// The saved CPU registers for when execution was paused by the scheduler

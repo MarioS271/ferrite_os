@@ -10,7 +10,9 @@
 #[cfg(target_arch = "aarch64")] pub(crate) mod aarch64;
 
 #[inline(always)]
-pub(crate) fn init(boot_info: &crate::lib::types::boot_info::BootInfo) {
-    #[cfg(target_arch = "x86_64")] x86_64::boot::init(boot_info);
-    #[cfg(target_arch = "aarch64")] aarch64::boot::init(boot_info);
+pub(crate) unsafe fn init(boot_info: &crate::lib::types::boot_info::BootInfo) {
+    unsafe {
+        #[cfg(target_arch = "x86_64")] x86_64::boot::init(boot_info);
+        #[cfg(target_arch = "aarch64")] aarch64::boot::init(boot_info);
+    }
 }

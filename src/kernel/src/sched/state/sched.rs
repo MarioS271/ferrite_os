@@ -64,7 +64,7 @@ impl Sched {
     /// in a deadlock. Copy necessary values and then modify after the closure returns.
     ///
     /// # Safety
-    /// The caller must guarantee that [`Sched::init_procs`] has already been called
+    /// The caller must guarantee that [`Sched::init`] has already been called
     pub unsafe fn with_process<R>(&self, pid: Pid, f: impl FnOnce(&mut Process) -> R) -> Option<R> {
         let mut procs = unsafe { self.procs.get().lock() };
         procs.get_mut(&pid).map(f)
@@ -73,7 +73,7 @@ impl Sched {
     /// Run `f` with the process which is currently running
     ///
     /// # Safety
-    /// The caller must guarantee that [`Sched::init_procs`] has already been called
+    /// The caller must guarantee that [`Sched::init`] has already been called
     pub unsafe fn with_active_process<R>(&self, f: impl FnOnce(&mut Process) -> R) -> Option<R> {
         unsafe { self.with_process(self.active_pid(), f) }
     }
@@ -81,7 +81,7 @@ impl Sched {
     /// Add a process to the process table
     ///
     /// # Safety
-    /// The caller must guarantee that [`Sched::init_procs`] has already been called
+    /// The caller must guarantee that [`Sched::init`] has already been called
     pub unsafe fn insert_process(&self, process: Process) {
         unsafe { self.procs.get() }.lock().insert(process.pid, process);
     }
@@ -89,7 +89,7 @@ impl Sched {
     /// Remove a process from the process table and return it, or `None` if it did not exist
     ///
     /// # Safety
-    /// The caller must guarantee that [`Sched::init_procs`] has already been called
+    /// The caller must guarantee that [`Sched::init`] has already been called
     pub unsafe fn remove_process(&self, pid: Pid) -> Option<Process> {
         unsafe { self.procs.get() }.lock().remove(&pid)
     }

@@ -4,7 +4,7 @@
 //! Authors: MarioS271
 
 use super::tables;
-use super::tables::gdt::{gdt_init, gdt_load};
+use super::tables::gdt::{gdt_init, gdt_load, GdtSetupInfo};
 use super::tables::idt::idt_init;
 use crate::arch::x86_64::cpu::gs_info::GsInfo;
 use crate::lib::addr::VirtAddr;
@@ -111,7 +111,7 @@ impl CpuState {
     /// - That this method has never been called before and will never be called again
     /// - That at the time of calling this method, no references or pointers to this data exist
     /// - While this method is being called, no other CPU is working with the given data
-    pub unsafe fn init_gdt(&'static self) -> (SegmentSelector, SegmentSelector) {
+    pub unsafe fn init_gdt(&'static self) -> GdtSetupInfo {
         let (gdt, gdt_setup_info) = gdt_init(self.tss());
 
         // Safety (for gdt_load): self.gdt was correctly initialized one line
@@ -121,10 +121,7 @@ impl CpuState {
             gdt_load(self.gdt(), &gdt_setup_info);
         }
 
-        let user_code = gdt_setup_info.user_code;
-        let user_data = gdt_setup_info.user_data;
-
-        (user_code, user_data)
+        gdt_setup_info
     }
 
     /// Initialize the GS Info Struct
