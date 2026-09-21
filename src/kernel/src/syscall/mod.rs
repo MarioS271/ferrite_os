@@ -4,6 +4,6 @@
 //! Authors: MarioS271
 
 pub(crate) mod error;
-pub(crate) mod structs;
+pub(crate) mod args;
 pub(crate) mod syscall;
 mod syscalls;

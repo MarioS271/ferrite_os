@@ -3,7 +3,7 @@
 //!
 //! Authors: MarioS271
 
-pub struct SyscallFrame {
+pub struct SyscallArgs {
     pub syscall_num: u64,
     pub arg1: u64,
     pub arg2: u64,

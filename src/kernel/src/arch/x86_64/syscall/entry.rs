@@ -7,8 +7,8 @@ use crate::arch::x86_64::cpu::gs_info::{GS_INFO_KERNEL_STACK_TOP, GS_INFO_USER_R
 use crate::arch::x86_64::syscall::frame::UserFrame;
 use crate::mm::layout::USER_MAX;
 use crate::state::kstate::KSTATE;
-use crate::syscall::structs::SyscallFrame;
 use core::arch::naked_asm;
+use crate::syscall::args::SyscallArgs;
 
 /// Syscall entry point
 ///
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
 
 /// Dispatches incoming syscalls to the correct handler
 extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
-    let syscall_frame = SyscallFrame {
+    let syscall_frame = SyscallArgs {
         syscall_num: frame.orig_rax,
         arg1: frame.rdi,
         arg2: frame.rsi,

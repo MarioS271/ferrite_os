@@ -3,8 +3,8 @@
 //!
 //! Authors: MarioS271
 
+use crate::syscall::args::SyscallArgs;
 use crate::syscall::error::{SyscallError, SyscallResult};
-use crate::syscall::structs::SyscallFrame;
 
 /// A type which holds all possible syscall variants and their numeric equivalents
 #[allow(dead_code)]
@@ -43,7 +43,7 @@ impl Syscall {
     }
 
     /// Dispatch to the correct syscall via the given [`SyscallFrame`]
-    pub fn dispatch(frame: &SyscallFrame) -> SyscallResult<u64> {
+    pub fn dispatch(frame: &SyscallArgs) -> SyscallResult<u64> {
         if !Syscall::is_valid_syscall(frame.syscall_num) {
             #[cfg(feature = "syscall-debug-logging")]
             crate::kdebug!("Received Invalid Syscall #{}", frame.syscall_num);
