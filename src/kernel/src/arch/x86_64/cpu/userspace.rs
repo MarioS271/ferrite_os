@@ -21,20 +21,38 @@ pub unsafe fn initial_userspace_jump(root_page_phys: u64, entry: u64, stack_top:
 
     unsafe {
         core::arch::asm!(
-        "mov cr3, {pml4}",
-        "push {ss}",
-        "push {rsp}",
-        "push {rflags}",
-        "push {cs}",
-        "push {rip}",
-        "iretq",
-        pml4 = in(reg) root_page_phys,
-        ss = in(reg) ss,
-        rsp = in(reg) stack_top.as_u64(),
-        rflags = in(reg) 0x202u64,
-        cs = in(reg) cs,
-        rip = in(reg) entry,
-        options(noreturn)
+            "mov cr3, {pml4}",
+            "push {ss}",
+            "push {rsp}",
+            "push {rflags}",
+            "push {cs}",
+            "push {rip}",
+
+            "xor eax, eax",
+            "xor ebx, ebx",
+            "xor ecx, ecx",
+            "xor edx, edx",
+            "xor esi, esi",
+            "xor edi, edi",
+            "xor ebp, ebp",
+            "xor r8d, r8d",
+            "xor r9d, r9d",
+            "xor r10d, r10d",
+            "xor r11d, r11d",
+            "xor r12d, r12d",
+            "xor r13d, r13d",
+            "xor r14d, r14d",
+            "xor r15d, r15d",
+
+            "iretq",
+
+            pml4 = in(reg) root_page_phys,
+            ss = in(reg) ss,
+            rsp = in(reg) stack_top.as_u64(),
+            rflags = in(reg) 0x202u64,
+            cs = in(reg) cs,
+            rip = in(reg) entry,
+            options(noreturn)
         )
     }
 }

@@ -100,16 +100,21 @@ extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
         arg2: frame.rsi,
         arg3: frame.rdx,
         arg4: frame.r10,
-        arg5: frame.r9,
-        arg6: frame.r8,
+        arg5: frame.r8,
+        arg6: frame.r9,
     };
 
     let res = crate::syscall::syscall::Syscall::dispatch(&syscall_frame);
-    frame.rax = match res {
-        Ok(_) => 0u64,
-        Err(e) => e as u64
+    match res {
+        Ok(val) => {
+            frame.rax = 0u64;
+            frame.rdx = val;
+        },
+        Err(err) => {
+            frame.rax = err as u64;
+            frame.rdx = 0u64;
+        }
     };
-    frame.rdx = res.unwrap_or(0u64);
 
     frame.cs = KSTATE.cpu.global_cpu_state().user_code_selector() as u64;
     frame.ss = KSTATE.cpu.global_cpu_state().user_data_selector() as u64;

@@ -8,6 +8,7 @@ _start:
     mov eax, 69
     syscall
     mov eax, 0
+    mov edi, 0
     syscall
 _halt:
     jmp _halt

@@ -28,13 +28,14 @@ macro_rules! panic_codes {
 }
 
 panic_codes! {
-    // General (0x00xx)
+    // General (0x000x-0x002x)
     Unknown = 0x0000, "Unknown";
     ManuallyTriggeredPanic = 0x0001, "IntendedPanic";
     InitFailure = 0x0002, "RuntimeError";
-    // Programmer Failures
-    UninitializedAccess = 0x0003, "ProgrammerError";
-    DoubleInitialization = 0x0004, "ProgrammerError";
+    InitProcessDied = 0x0003, "RuntimeError";
+    // Programmer Failures (0x003x)
+    UninitializedAccess = 0x0030, "ProgrammerError";
+    DoubleInitialization = 0x0031, "ProgrammerError";
 
     // Exceptions (0x01xx)
     // x86_&4

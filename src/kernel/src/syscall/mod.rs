@@ -6,3 +6,4 @@
 pub(crate) mod error;
 pub(crate) mod structs;
 pub(crate) mod syscall;
+mod syscalls;

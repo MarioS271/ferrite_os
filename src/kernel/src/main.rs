@@ -105,8 +105,11 @@ pub(crate) fn kernel_main(boot_info: BootInfo) -> ! {
 
     #[allow(unreachable_code)]
     {
-        kemerg!("Somehow, kernel_main is still running (this means the jump to the user binary did not succeed)");
-        cpu::instructions::halt_forever();
+        kemerg!("Init process died or was killed, panic'ing");
+        kernel_panic(
+            PanicCode::InitProcessDied,
+            "The init process (PID 1) has died, aborting!"
+        );
     }
 }
 
