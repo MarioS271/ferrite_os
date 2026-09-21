@@ -7,6 +7,7 @@ use crate::arch::x86_64::cpu::gs_info::{GS_INFO_KERNEL_STACK_TOP, GS_INFO_USER_R
 use crate::arch::x86_64::syscall::frame::UserFrame;
 use crate::mm::layout::USER_MAX;
 use crate::state::kstate::KSTATE;
+use crate::syscall::structs::SyscallFrame;
 use core::arch::naked_asm;
 
 /// Syscall entry point
@@ -93,12 +94,23 @@ pub unsafe extern "C" fn syscall_entry() -> ! {
 
 /// Dispatches incoming syscalls to the correct handler
 extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
-    #[cfg(feature = "syscall-debug-logging")]
-    crate::kdebug!("syscall {} received", frame.orig_rax);
+    let syscall_frame = SyscallFrame {
+        syscall_num: frame.orig_rax,
+        arg1: frame.rdi,
+        arg2: frame.rsi,
+        arg3: frame.rdx,
+        arg4: frame.r10,
+        arg5: frame.r9,
+        arg6: frame.r8,
+    };
 
-    // restore cs and ss for the iretq path
+    let res = crate::syscall::syscall::Syscall::dispatch(&syscall_frame);
+    frame.rax = match res {
+        Ok(_) => 0u64,
+        Err(e) => e as u64
+    };
+    frame.rdx = res.unwrap_or(0u64);
+
     frame.cs = KSTATE.cpu.global_cpu_state().user_code_selector() as u64;
     frame.ss = KSTATE.cpu.global_cpu_state().user_data_selector() as u64;
-
-    frame.rax = 0;
 }

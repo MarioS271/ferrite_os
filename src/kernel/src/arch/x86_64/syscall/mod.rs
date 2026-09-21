@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! x86_64 Syscalls
+//! x86_64 syscalls specifics
 //!
 //! Authors: MarioS271
 

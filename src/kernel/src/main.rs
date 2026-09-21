@@ -20,6 +20,7 @@ mod mm;
 mod net;
 mod sched;
 mod state;
+mod syscall;
 mod vfs;
 
 mod config;
