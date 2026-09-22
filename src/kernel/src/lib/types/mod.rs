@@ -7,3 +7,4 @@ pub(crate) mod aligned_stack;
 pub(crate) mod boot_info;
 pub(crate) mod fmt_buffer;
 pub(crate) mod packed_u8;
+pub(crate) mod user_slice;

@@ -33,9 +33,11 @@ panic_codes! {
     ManuallyTriggeredPanic = 0x0001, "IntendedPanic";
     InitFailure = 0x0002, "RuntimeError";
     InitProcessDied = 0x0003, "RuntimeError";
+
     // Programmer Failures (0x003x)
-    UninitializedAccess = 0x0030, "ProgrammerError";
-    DoubleInitialization = 0x0031, "ProgrammerError";
+    InternalKernelError = 0x0030, "ProgrammerError";
+    UninitializedAccess = 0x0031, "ProgrammerError";
+    DoubleInitialization = 0x0032, "ProgrammerError";
 
     // Exceptions (0x01xx)
     // x86_&4

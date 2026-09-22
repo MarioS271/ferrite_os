@@ -4,3 +4,4 @@
 //! Authors: MarioS271
 
 pub(crate) mod exit;
+pub(crate) mod debug_write;

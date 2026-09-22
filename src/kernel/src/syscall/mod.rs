@@ -3,7 +3,7 @@
 //!
 //! Authors: MarioS271
 
-pub(crate) mod error;
-pub(crate) mod args;
-pub(crate) mod syscall;
 mod syscalls;
+pub(crate) mod args;
+pub(crate) mod result;
+pub(crate) mod syscall;
