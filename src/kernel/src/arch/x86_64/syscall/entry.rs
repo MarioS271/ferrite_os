@@ -7,8 +7,8 @@ use crate::arch::x86_64::cpu::gs_info::{GS_INFO_KERNEL_STACK_TOP, GS_INFO_USER_R
 use crate::arch::x86_64::syscall::frame::UserFrame;
 use crate::mm::layout::USER_MAX;
 use crate::state::kstate::KSTATE;
-use core::arch::naked_asm;
 use crate::syscall::args::SyscallArgs;
+use core::arch::naked_asm;
 
 /// Syscall entry point
 ///
@@ -111,6 +111,7 @@ extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
             frame.rdx = val;
         },
         Err(err) => {
+            // TODO: send invalid opcode signal
             frame.rax = err as u64;
             frame.rdx = 0u64;
         }

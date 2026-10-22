@@ -9,8 +9,8 @@ use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::fmt_buffer::FmtBuffer;
 use crate::mm::pmm::FRAME_SIZE;
-use crate::mm::vmm::traits::VmmPaging;
 use crate::mm::vmm::Vmm;
+use crate::mm::vmm::traits::VmmPaging;
 use crate::state::kstate::KSTATE;
 use core::fmt::Write;
 use x86_64::registers::control::Cr2;
@@ -87,8 +87,8 @@ fn handle_user_pf(
     todo!();
 }
 
-
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn kernel_pf_panic(
     panic_message: &str,
     isf: &InterruptStackFrame,

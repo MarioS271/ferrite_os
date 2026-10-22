@@ -3,30 +3,28 @@
 //!
 //! Authors: MarioS271
 
-/// Internal macro to avoid code duplication
-macro_rules! __kprint {
-    ($level:expr, $($arg:tt)*) => {
-        {
-            use $crate::kprint::kernel_writer::KernelWriter;
-            use $crate::kprint::log_entry::LogFlags;
-            use $crate::state::kstate::KSTATE;
-            if KSTATE.kprint.config().max_log_level() >= $level {
-                let mut w = KernelWriter::lock(
-                    $level,
-                    LogFlags::NEWLINE
-                );
-                let _ = core::fmt::write(&mut w, format_args!($($arg)*));
-            }
-        }
-    };
+/// Internal kprint handler function
+#[inline(never)]
+pub fn __kprint(log_level: super::log_entry::LogLevel, args: core::fmt::Arguments<'_>) {
+    use super::log_entry::LogFlags;
+    use super::kernel_writer::KernelWriter;
+    use crate::state::kstate::KSTATE;
+
+    if KSTATE.kprint.config().max_log_level() >= log_level {
+        let mut w = KernelWriter::lock(
+            log_level,
+            LogFlags::NEWLINE
+        );
+        let _ = core::fmt::write(&mut w, args);
+    }
 }
-pub(crate) use __kprint;
+
 
 /// Log a line at emergency severity (system is unusable).
 #[macro_export]
 macro_rules! kemerg {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Emergency, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Emergency, format_args!($($arg)*));
     };
 }
 
@@ -34,7 +32,7 @@ macro_rules! kemerg {
 #[macro_export]
 macro_rules! kalert {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Alert, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Alert, format_args!($($arg)*));
     };
 }
 
@@ -42,7 +40,7 @@ macro_rules! kalert {
 #[macro_export]
 macro_rules! kcrit {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Critical, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Critical, format_args!($($arg)*));
     };
 }
 
@@ -50,7 +48,7 @@ macro_rules! kcrit {
 #[macro_export]
 macro_rules! kerror {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Error, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Error, format_args!($($arg)*));
     };
 }
 
@@ -58,7 +56,7 @@ macro_rules! kerror {
 #[macro_export]
 macro_rules! kwarn {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Warn, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Warn, format_args!($($arg)*));
     };
 }
 
@@ -66,7 +64,7 @@ macro_rules! kwarn {
 #[macro_export]
 macro_rules! knotice {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Notice, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Notice, format_args!($($arg)*));
     };
 }
 
@@ -74,7 +72,7 @@ macro_rules! knotice {
 #[macro_export]
 macro_rules! kinfo {
     ($($arg:tt)*) => {
-        $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Info, $($arg)*);
+        $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Info, format_args!($($arg)*));
     };
 }
 
@@ -84,7 +82,7 @@ macro_rules! kdebug {
     ($($arg:tt)*) => {
         {
             #[cfg(feature = "debug-logging")]
-            $crate::kprint::macros::__kprint!($crate::kprint::log_entry::LogLevel::Debug, $($arg)*);
+            $crate::kprint::macros::__kprint($crate::kprint::log_entry::LogLevel::Debug, format_args!($($arg)*));
         };
     };
 }

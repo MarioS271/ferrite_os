@@ -1,5 +1,5 @@
 bits 64
-default rel
+;default rel
 global _start
 
 section .text
@@ -10,7 +10,19 @@ _start:
 
     ; debug write
     mov eax, 1
-    lea rdi, [hello_world]
+    lea rdi, [rel hello_world]
+    mov esi, hello_world_len
+    syscall
+
+    ; debug write (kernel addr)
+    mov eax, 1
+    mov rdi, 0xFFFF900000000000
+    mov esi, hello_world_len
+    syscall
+
+    ; debug write (invalid absolute addr)
+    mov eax, 1
+    mov rdi, 0x1000
     mov esi, hello_world_len
     syscall
 
