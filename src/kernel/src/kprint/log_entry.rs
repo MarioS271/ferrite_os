@@ -6,8 +6,6 @@
 use crate::lib::macros::bitflags::bitflags;
 use crate::lib::types::packed_u8::PackedU8;
 
-// TODO: full POSIX syslog compat
-
 /// Header of one ring buffer log entry, after it comes `text_len` bytes of text
 #[derive(Copy, Clone)]
 #[repr(C, packed)]

@@ -89,12 +89,7 @@ pub fn setup_user_stack(addr_space: &mut AddressSpace) -> MmResult<VirtAddr> {
     let stack_top = crate::mm::layout::USER_STACK_TOP;
     let stack_bottom = stack_top - stack_size;
 
-    // Safety: the PMM was already initialized in stage 2
-    let mut pmm = unsafe { KSTATE.mm.pmm().lock() };
-
-    // TODO: lazily map this (needs user pf handler)
-    Vmm::map_region(
-        &mut pmm,
+    Vmm::lazy_map_region(
         addr_space,
         stack_bottom,
         stack_size,

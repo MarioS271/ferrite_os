@@ -8,6 +8,7 @@ use crate::arch::x86_64::syscall::frame::UserFrame;
 use crate::mm::layout::USER_MAX;
 use crate::state::kstate::KSTATE;
 use crate::syscall::args::SyscallArgs;
+use crate::kdebug;
 use core::arch::naked_asm;
 
 /// Syscall entry point
@@ -111,7 +112,9 @@ extern "C" fn syscall_dispatch(frame: &mut UserFrame) {
             frame.rdx = val;
         },
         Err(err) => {
-            // TODO: send invalid opcode signal
+            kdebug!("Syscall failed with an error code of {}", err as u64);
+
+            // TODO: send EXILL
             frame.rax = err as u64;
             frame.rdx = 0u64;
         }
