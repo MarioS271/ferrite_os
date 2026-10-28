@@ -17,11 +17,12 @@ the right submodule at compile time via `#[cfg(target_arch)]`.
 | Language                | Rust                                            |
 | Kernel Type             | Monolithic                                      |
 | Supported Architectures | x86_64 (more planned)                           |
-| Syscall ABI             | POSIX                                           |
+| Syscall ABI             | Ferrite                                         |
 
 ### 1.1. The VFS
-Ferrite follows the "everything is a file" mindset, with one deviation: it uses a namespaced VFS.
+Ferrite uses a namespaced VFS.
 The namespacing aims to separate actual files from things like physical and virtual devices, process info and more.
+Files are POSIX-similar file nodes on which you can call `open()`, `write()` and so on. Everything will be an object, with fields fitting that object (except files, those are file streams like in linux).
 
 Namespaces that Ferrite exposes include:
 
@@ -105,6 +106,8 @@ python scripts/<arch>/build.py clean   # delete build/ and target/
 ```
 
 Compilation happens inside Docker; QEMU runs natively on the host.
+
+If you changed `user-binary.asm`, you need to run `docker exec ferrite_os ./build-user-binary.sh` to rebuild it.
 
 ### [`scripts/docs.py`](scripts/docs.py) -- Building Documentation
 
