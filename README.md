@@ -11,14 +11,6 @@ the right submodule at compile time via `#[cfg(target_arch)]`.
 
 ---
 
-<center>
-<video width="900" controls>
-    <source src="preview.mp4" type="video/mp4">
-</video>
-</center>
-
----
-
 ## 1. Ferrite's Architecture
 | Feature                 | Design Choice(s)                                |
 |-------------------------|-------------------------------------------------|
