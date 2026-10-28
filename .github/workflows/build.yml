@@ -6,34 +6,31 @@ on:
 
 jobs:
   build:
+    name: build-${{ matrix.profile }}
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write   # required for softprops/action-gh-release on tagged pushes
+    strategy:
+      matrix:
+        include:
+          - profile: release
+            cargo_args: --release
+          - profile: debug
+            # Cargo features enabled for the debug ISO (comma separated).
+            # Mirrors the enabled entries of [features] in run/config/build.toml.
+            cargo_args: --features debug-checks,debug-logging,syscall-debug-logging
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xorriso mtools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nasm xorriso mtools
 
-      # Limine v8.x-binary is a moving branch; re-use the last clone until the
-      # cache key is manually busted or the workflow file changes.
-      - name: Cache Limine
-        id: cache-limine
-        uses: actions/cache@v4
-        with:
-          path: limine
-          key: limine-v8.x-binary-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+      # Same Limine branch as the Dockerfile; the -binary branch ships prebuilt EFI files.
+      - name: Clone Limine
+        run: git clone https://github.com/limine-bootloader/limine.git --branch=v9.x-binary --depth=1 limine
 
-      - name: Clone and build Limine
-        if: steps.cache-limine.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/limine-bootloader/limine.git \
-            --branch=v8.x-binary --depth=1 limine
-          make -C limine
-
+      # Channel, target and components come from rust-toolchain.toml.
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -44,38 +41,103 @@ jobs:
       # Caches ~/.cargo/registry, ~/.cargo/git, and ./target.
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.profile }}
+
+      # The kernel include_bytes!()s this, and it is not checked in.
+      - name: Build user binary
+        run: mkdir -p build && ./build-user-binary.sh
 
       - name: Build kernel
-        run: cargo build --target x86_64-unknown-none --manifest-path src/kernel/Cargo.toml
+        run: cargo build --manifest-path src/kernel/Cargo.toml ${{ matrix.cargo_args }}
 
       - name: Assemble ISO
         run: |
-          mkdir -p build/iso/boot/limine build/iso/EFI/BOOT
+          iso_tree=build/iso
+          mkdir -p $iso_tree/boot/limine $iso_tree/EFI/BOOT
 
-          cp target/x86_64-unknown-none/debug/kernel build/iso/kernel
-          sed 's/\r//' run/configs/limine.conf > build/iso/boot/limine/limine.conf
+          cp target/x86_64-unknown-none/${{ matrix.profile }}/kernel $iso_tree/ferrite
+          sed 's/\r//' run/config/limine.conf > $iso_tree/boot/limine/limine.conf
 
-          cp limine/BOOTX64.EFI        build/iso/EFI/BOOT/
-          cp limine/BOOTIA32.EFI       build/iso/EFI/BOOT/
-          cp limine/limine-uefi-cd.bin build/iso/boot/limine/
+          cp limine/BOOTX64.EFI limine/BOOTIA32.EFI $iso_tree/EFI/BOOT/
+          cp limine/limine-uefi-cd.bin $iso_tree/boot/limine/
 
           xorriso -as mkisofs \
             -no-emul-boot \
             --efi-boot boot/limine/limine-uefi-cd.bin \
             -efi-boot-part --efi-boot-image \
             --protective-msdos-label \
-            build/iso \
-            -o build/ferrite_os.iso
+            $iso_tree \
+            -o build/ferrite_os-${{ matrix.profile }}.iso
 
-      - name: Upload artifact
+      - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: ferrite_os-iso
-          path: build/ferrite_os.iso
+          name: iso-${{ matrix.profile }}
+          path: build/ferrite_os-${{ matrix.profile }}.iso
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # required for softprops/action-gh-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ISOs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: iso-*
+          path: build
+          merge-multiple: true
+
+      # Everything under scripts/other (per-OS dep installers + launchers),
+      # stored as other/<os>/... and without any downloaded OVMF files.
+      - name: Zip helper scripts
+        run: |
+          cd scripts
+          zip -r ../build/ferrite_os-scripts.zip other -x '*/ovmf/*'
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/ferrite_os.iso
+          prerelease: true
+          body: |
+            ## Try FerriteOS
 
+            FerriteOS is a UEFI x86_64 kernel. The easiest way to try it is in QEMU.
+
+            ### Linux
+
+            1. Download `ferrite_os-release.iso` (or `ferrite_os-debug.iso` for the build with debug logging and checks) and `ferrite_os-scripts.zip` from the assets below.
+            2. Unzip the scripts and go to the Linux folder:
+               ```sh
+               unzip ferrite_os-scripts.zip
+               cd other/linux
+               ```
+            3. Install the dependencies. This installs QEMU system-wide (needs sudo) and downloads OVMF next to the script:
+               ```sh
+               ./install-deps.sh
+               ```
+            4. Start the ISO:
+               ```sh
+               ./run.sh
+               ```
+               Put the ISO next to `run.sh`. It picks up `ferrite_os-release.iso` first, then any other `ferrite_os-*.iso`. To choose one explicitly, pass the path, for example `./run.sh ferrite_os-debug.iso`.
+
+            Kernel output is printed to the terminal via the serial port.
+
+            ### Other platforms
+
+            Scripts for other platforms are not available yet. You can run the ISO manually with
+            `qemu-system-x86_64`, `-cdrom ferrite_os-release.iso`, `-m 4G` and the OVMF `code.fd` and `vars.fd`
+            files from [ovmf-prebuilt](https://github.com/rust-osdev/ovmf-prebuilt/releases) attached as `pflash` drives.
+          files: |
+            build/ferrite_os-release.iso
+            build/ferrite_os-debug.iso
+            build/ferrite_os-scripts.zip

@@ -16,3 +16,6 @@ AGENTS.md
 /docs
 /target
 /run/*.log
+
+# Downloaded deps
+/scripts/other/*/ovmf
