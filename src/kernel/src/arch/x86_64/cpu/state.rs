@@ -4,16 +4,16 @@
 //! Authors: MarioS271
 
 use super::tables;
-use super::tables::gdt::{gdt_init, gdt_load, GdtSetupInfo};
+use super::tables::gdt::{GdtSetupInfo, gdt_init, gdt_load};
 use super::tables::idt::idt_init;
 use crate::arch::x86_64::cpu::gs_info::GsInfo;
 use crate::lib::addr::VirtAddr;
-use crate::lib::sync::unchecked_cell::UncheckedCell;
-use core::sync::atomic::{AtomicU16, Ordering};
-use x86_64::structures::gdt::{GlobalDescriptorTable, SegmentSelector};
-use x86_64::structures::idt::InterruptDescriptorTable;
 use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
+use crate::lib::sync::unchecked_cell::UncheckedCell;
+use core::sync::atomic::{AtomicU16, Ordering};
+use x86_64::structures::gdt::GlobalDescriptorTable;
+use x86_64::structures::idt::InterruptDescriptorTable;
 
 /// Global CPU state such as IDT and user code/data selectors
 #[repr(align(64))]

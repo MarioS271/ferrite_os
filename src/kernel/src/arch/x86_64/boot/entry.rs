@@ -3,14 +3,14 @@
 //!
 //! Authors: MarioS271
 
+use crate::drivers::tty::uart::{Uart, UartOps};
 use crate::knotice;
 use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::boot_info::{BootInfo, FramebufferInfo, KernelCmdline, KernelSectionInfo};
-use crate::lib::types::fmt_buffer::FmtBuffer;
 use crate::state::simple_state::SIMPLE_STATE;
-use limine::request::{ExecutableAddressRequest, ExecutableCmdlineRequest, FramebufferRequest, HhdmRequest, MemmapRequest, RsdpRequest};
 use limine::BaseRevision;
+use limine::request::{ExecutableAddressRequest, ExecutableCmdlineRequest, FramebufferRequest, HhdmRequest, MemmapRequest, RsdpRequest};
 
 unsafe extern "C" {
     /// Symbol which is located at the start of the kernel
@@ -36,10 +36,20 @@ pub static LIMINE_MEMMAP_REQUEST: MemmapRequest = MemmapRequest::new();
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_entry() -> ! {
-    // Stage 0
+    // Stage 0a
     crate::state::kstate::KSTATE.init();
-    
-    serial_init();
+
+    // Stage 0b
+    // Safety: we are in a non-SMP/non-threading context
+    unsafe {
+        SIMPLE_STATE.init_uart(
+            Uart::com1()
+        );
+    };
+
+    // Safety: uart was correctly initialized above
+    // The return value is disregarded because COM1 is guaranteed to not be initialized
+    let _ = unsafe { SIMPLE_STATE.uart().lock().init() };
 
     knotice!(
         "Ferrite Kernel {}, on x86_64 booted via limine",
@@ -117,30 +127,4 @@ pub extern "C" fn kernel_entry() -> ! {
     };
 
     crate::kernel_main(boot_info);
-}
-
-/// Initializes the kernel serial logger
-fn serial_init() {
-    use crate::drivers::tty::uart::{Uart, UartOps};
-
-    // Safety: we are in a non-SMP/non-threading context
-    unsafe {
-        SIMPLE_STATE.init_uart(
-            Uart::com1()
-        );
-    };
-
-    // Safety: uart was correctly initialized above
-    if let Err(err) = unsafe { SIMPLE_STATE.uart().lock().init() } {
-        use core::fmt::Write;
-
-        let mut fmt_buffer = FmtBuffer::<32>::new();
-        let _ = write!(&mut fmt_buffer, "Failed to initialize UART COM1 ({})", err.as_str());
-
-        // this panic will result in a silent halt, this is pretty much unavoidable here
-        kernel_panic(
-            PanicCode::InitFailure,
-            fmt_buffer.as_str()
-        );
-    };
 }

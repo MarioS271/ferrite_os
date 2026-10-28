@@ -17,10 +17,11 @@ use crate::state::kstate::KSTATE;
 use core::fmt::Write;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
+use crate::arch::x86_64::exception_table::search_exception_table;
 
 /// Handle Page Faults; dispatches to [`handle_kernel_address_pf`] and [`handle_user_address_pf`]
 pub extern "x86-interrupt" fn handler(
-    isf: InterruptStackFrame,
+    mut isf: InterruptStackFrame,
     error_code: PageFaultErrorCode
 ) {
     let faulting_virt = VirtAddr::new(Cr2::read_raw());
@@ -33,7 +34,7 @@ pub extern "x86-interrupt" fn handler(
         (true, true) => {
             handle_user_address_pf(
                 false,
-                &isf,
+                &mut isf,
                 error_code,
                 faulting_virt
             );
@@ -52,7 +53,7 @@ pub extern "x86-interrupt" fn handler(
         (false, true) => {
             handle_user_address_pf(
                 true,
-                &isf,
+                &mut isf,
                 error_code,
                 faulting_virt
             );
@@ -128,7 +129,7 @@ fn handle_kernel_address_pf(
 #[inline(always)]
 fn handle_user_address_pf(
     from_ring0: bool,
-    isf: &InterruptStackFrame,
+    isf: &mut InterruptStackFrame,
     error_code: PageFaultErrorCode,
     faulting_virt: VirtAddr
 ) {
@@ -146,23 +147,15 @@ fn handle_user_address_pf(
         )
     };
 
-    let cant_map_handler = || -> ! {
-        if from_ring0 {
-            // TODO: exception table
-            kernel_pf_panic(
-                "Kernel tried accessing unmapped user memory; TODO: exception table",
-                isf, error_code, faulting_virt
-            )
-        } else {
-            // TODO: send EXSEGV
-            kernel_pf_panic(
-                "Process tried accessing unmapped memory (from userspace); TODO: send EXSEGV",
-                isf, error_code, faulting_virt
-            )
-        }
+    let Some(vma_flags) = vma_flags else {
+        user_pf_cant_map_handler(
+            from_ring0,
+            isf,
+            error_code,
+            faulting_virt
+        );
+        return;
     };
-
-    let vma_flags = vma_flags.unwrap_or_else(|| cant_map_handler());
 
     let mapping_allowed =
         if error_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) { false }
@@ -171,7 +164,13 @@ fn handle_user_address_pf(
         else { true };
 
     if !mapping_allowed {
-        cant_map_handler();
+        user_pf_cant_map_handler(
+            from_ring0,
+            isf,
+            error_code,
+            faulting_virt
+        );
+        return;
     }
 
     // Safety: interrupts only get enabled after full mm kernel boot, which guarantees that
@@ -206,6 +205,42 @@ fn handle_user_address_pf(
                 "Could not lazy-map a page for a user process, out of memory (this is a kernel bug)"
             );
         }
+    }
+}
+
+/// Handle the user page fault handler being unable to map
+#[cold]
+fn user_pf_cant_map_handler(
+    from_ring0: bool,
+    isf: &mut InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+    faulting_virt: VirtAddr
+) {
+    if from_ring0 {
+        match search_exception_table(isf.instruction_pointer.as_u64()) {
+            Some(fixup) => {
+                // Safety: fixup comes from the exception table which is compile-time valid. It
+                // points to directly after the faulting copy instruction, where the regs are
+                // already in the expected state
+                unsafe {
+                    isf.as_mut().update(
+                        |frame| frame.instruction_pointer = x86_64::VirtAddr::new(fixup)
+                    );
+                }
+            }
+            None => {
+                kernel_pf_panic(
+                    "Kernel accessed unmapped user memory outside of the exception table",
+                    isf, error_code, faulting_virt
+                )
+            }
+        }
+    } else {
+        // TODO: send EXSEGV
+        kernel_pf_panic(
+            "Process tried accessing unmapped memory (from userspace); TODO: send EXSEGV",
+            isf, error_code, faulting_virt
+        )
     }
 }
 

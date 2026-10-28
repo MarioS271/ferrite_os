@@ -34,7 +34,6 @@ impl Syscall {
         match self {
             Exit => "Exit",
             DebugWrite => "DebugWrite",
-            _ => "Unknown"
         }
     }
 

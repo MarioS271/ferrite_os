@@ -3,6 +3,7 @@
 //!
 //! Authors: MarioS271
 
+use crate::arch;
 use crate::lib::panic::kernel_panic;
 use crate::lib::panic_codes::PanicCode;
 use crate::lib::types::fmt_buffer::FmtBuffer;
@@ -53,13 +54,16 @@ impl UserSlice {
     /// # Panics
     /// - `slice` is not exactly as large as this [`UserSlice`] (only with the `debug-checks` feature)
     /// - any of the cases listed on [`Self::partial_copy_to_slice`]
-    pub fn copy_to_slice(&self, slice: &mut [u8]) {
+    pub fn copy_to_slice(&self, slice: &mut [u8]) -> SyscallResult<()> {
         #[cfg(feature = "debug-checks")]
         if self.length != slice.len() as u64 {
             self.incorrect_size_panic(slice.len(), self.length);
         }
 
-        self.partial_copy_to_slice(slice, 0, self.length)
+        match self.partial_copy_to_slice(slice, 0, self.length) {
+            0 => Ok(()),
+            _ => Err(SyscallError::BadAddress),
+        }
     }
 
     /// Copies a part of the given userspace data into the given `slice`
@@ -70,7 +74,10 @@ impl UserSlice {
     /// - `slice` is smaller than `length`
     ///
     /// All of these indicate a kernel-side bug, never bad userspace input
-    pub fn partial_copy_to_slice(&self, slice: &mut [u8], offset: u64, length: u64) {
+    ///
+    /// # Returns
+    #[must_use]
+    pub fn partial_copy_to_slice(&self, slice: &mut [u8], offset: u64, length: u64) -> u64 {
         let Some(end) = offset.checked_add(length) else {
             kernel_panic(
                 PanicCode::InternalKernelError,
@@ -89,7 +96,7 @@ impl UserSlice {
         }
 
         if length == 0 {
-            return;
+            return 0;
         }
 
         #[cfg(feature = "debug-checks")]
@@ -106,18 +113,10 @@ impl UserSlice {
         // - length of dst buffer is equal or larger than src buffer
         unsafe {
             #[cfg(target_arch = "x86_64")]
-            core::arch::asm!(
-                "rep movsb",
-
-                inout("rsi") start_addr => _,
-                inout("rdi") slice.as_mut_ptr() => _,
-                inout("rcx") length => _,
-
-                options(nostack, preserves_flags)
-            );
+            return arch::x86_64::lib::types::user_slice::partial_copy_to_slice_asm(slice, start_addr, length);
 
             #[cfg(target_arch = "aarch64")]
-            compile_error!("not implemented");
+            compile_error!("not implemented")
         }
     }
 

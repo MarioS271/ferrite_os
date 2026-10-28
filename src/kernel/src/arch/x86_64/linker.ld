@@ -20,6 +20,12 @@ SECTIONS {
         *(.rodata .rodata.*)
     } :rodata
 
+    __ex_table : ALIGN(4) {
+        __ex_table_start = .;
+        KEEP(*(__ex_table))
+        __ex_table_end = .;
+    } :rodata
+
     .eh_frame_hdr : { *(.eh_frame_hdr) } :rodata
     .eh_frame : { *(.eh_frame) } :rodata
 

@@ -30,10 +30,10 @@ _start:
     syscall
 
     ; debug write (invalid absolute addr)
-    ;mov eax, 1
-    ;mov rdi, 0x1000
-    ;mov esi, hello_world_len
-    ;syscall
+    mov eax, 1
+    mov rdi, 0x1000
+    mov esi, hello_world_len
+    syscall
 
     ; syscall with current byte as output
     mov eax, 1
