@@ -97,11 +97,11 @@ jobs:
           merge-multiple: true
 
       # Everything under scripts/other (per-OS dep installers + launchers),
-      # stored as other/<os>/... and without any downloaded OVMF files.
+      # stored as <os>/... (without the other/ folder itself) and without any downloaded OVMF files.
       - name: Zip helper scripts
         run: |
-          cd scripts
-          zip -r ../build/ferrite_os-scripts.zip other -x '*/ovmf/*'
+          cd scripts/other
+          zip -r "$GITHUB_WORKSPACE/build/ferrite_os-scripts.zip" . -x '*/ovmf/*'
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -117,8 +117,8 @@ jobs:
             1. Download `ferrite_os-release.iso` (or `ferrite_os-debug.iso` for the build with debug logging and checks) and `ferrite_os-scripts.zip` from the assets below.
             2. Unzip the scripts and go to the Linux folder:
                ```sh
-               unzip ferrite_os-scripts.zip
-               cd other/linux
+               unzip ferrite_os-scripts.zip -d ferrite_os-scripts
+               cd ferrite_os-scripts/linux
                ```
             3. Install the dependencies. This installs QEMU system-wide (needs sudo) and downloads OVMF next to the script:
                ```sh
@@ -131,6 +131,13 @@ jobs:
                Put the ISO next to `run.sh`. It picks up `ferrite_os-release.iso` first, then any other `ferrite_os-*.iso`. To choose one explicitly, pass the path, for example `./run.sh ferrite_os-debug.iso`.
 
             Kernel output is printed to the terminal via the serial port.
+
+            ### Windows
+
+            1. Download `ferrite_os-release.iso` (or `ferrite_os-debug.iso`) and `ferrite_os-scripts.zip` from the assets below.
+            2. Unzip the scripts and open the `windows` folder.
+            3. Double-click `install-deps.cmd`. This installs QEMU via winget (needs admin approval) and downloads OVMF next to the script.
+            4. Put the ISO next to `run.cmd` and double-click `run.cmd`. It picks up `ferrite_os-release.iso` first, then any other `ferrite_os-*.iso`. To choose one explicitly, run `run.cmd ferrite_os-debug.iso` from a terminal.
 
             ### Other platforms
 

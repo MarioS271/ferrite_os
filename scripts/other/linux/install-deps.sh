@@ -4,6 +4,33 @@
 #   - OVMF (code.fd / vars.fd), downloaded next to this script into ./ovmf
 set -euo pipefail
 
+# Double-click support: when not started from a terminal, reopen in one and
+# keep it open at the end so the output stays readable.
+if [ -z "${FERRITE_TERMINAL:-}" ] && [ ! -t 1 ]; then
+    export FERRITE_TERMINAL=1
+    self="$(readlink -f "${BASH_SOURCE[0]}")"
+    for term in x-terminal-emulator gnome-terminal konsole xfce4-terminal kitty alacritty xterm; do
+        command -v "$term" >/dev/null 2>&1 || continue
+        case "$term" in
+            gnome-terminal) exec "$term" -- bash "$self" "$@" ;;
+            xfce4-terminal) exec "$term" -x bash "$self" "$@" ;;
+            kitty)          exec "$term" bash "$self" "$@" ;;
+            *)              exec "$term" -e bash "$self" "$@" ;;
+        esac
+    done
+fi
+
+on_exit() {
+    local code=$?
+    [ -n "${tmp:-}" ] && rm -rf "$tmp"
+    [ -n "${VARS:-}" ] && rm -f "$VARS"
+    if [ -n "${FERRITE_TERMINAL:-}" ]; then
+        read -rp "Press Enter to close..." _ || true
+    fi
+    exit "$code"
+}
+trap on_exit EXIT
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OVMF_DIR="$DIR/ovmf"
 OVMF_API="https://api.github.com/repos/rust-osdev/ovmf-prebuilt/releases/latest"
@@ -42,7 +69,6 @@ install_ovmf() {
     [ -n "$url" ] || { echo "✗ Could not find OVMF release asset" >&2; exit 1; }
 
     tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' EXIT
     curl -fsSL "$url" | tar -xJ -C "$tmp"
 
     mkdir -p "$OVMF_DIR"

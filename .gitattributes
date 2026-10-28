@@ -15,3 +15,6 @@
 *.o     binary
 *.a     binary
 *.elf   binary
+
+# Windows batch files need CRLF
+*.cmd   text eol=crlf
